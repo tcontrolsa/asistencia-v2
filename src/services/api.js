@@ -3,7 +3,10 @@ export function getApiBase() {
   if (typeof window !== 'undefined') {
     // Check localStorage override
     const saved = localStorage.getItem('tcontrol_api_url');
-    if (saved) return saved.replace(/\/$/, '');
+    if (saved) {
+      const clean = saved.trim().replace(/\/$/, '');
+      return clean.endsWith('/api') ? clean : `${clean}/api`;
+    }
 
     // In local development, use the Vite dev server proxy
     const host = window.location.hostname;
@@ -14,14 +17,13 @@ export function getApiBase() {
   return import.meta.env.VITE_API_URL || '/api';
 }
 
-const API_BASE = getApiBase();
-
 /**
  * Execute a backend action
  */
 export async function executeAction(actionName, payload = {}) {
+  const apiBase = getApiBase();
   try {
-    const res = await fetch(`${API_BASE}/action`, {
+    const res = await fetch(`${apiBase}/action`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
