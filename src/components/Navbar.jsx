@@ -21,7 +21,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
     setDbStatus('checking');
     executeAction('obtenerConfiguraciones')
       .then(data => {
-        if (data && data.success) setDbStatus('connected');
+        if (data && (data.success || data.ok || (!data.error && !data.err))) setDbStatus('connected');
         else setDbStatus('disconnected');
       })
       .catch(() => setDbStatus('disconnected'));
@@ -49,10 +49,14 @@ export default function Navbar({ activeTab, setActiveTab }) {
 
     try {
       const data = await executeAction('obtenerConfiguraciones');
-      if (data && data.success) {
+      if (data && (data.success || data.ok || (!data.error && !data.err))) {
         setDbStatus('connected');
         setTestResult({ success: true, msg: '¡Conexión exitosa con el backend PostgreSQL!' });
-        setTimeout(() => setShowConfig(false), 1200);
+        setTimeout(() => {
+          setShowConfig(false);
+          // Reload page to let components refetch fresh data
+          window.location.reload();
+        }, 1200);
       } else {
         setDbStatus('disconnected');
         setTestResult({ success: false, msg: 'El backend respondió pero reportó error.' });

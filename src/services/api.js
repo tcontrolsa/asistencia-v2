@@ -87,13 +87,14 @@ export async function registrarSalida(asistenciaData) {
 // ----------------- Colaboradores & Config -----------------
 export async function obtenerColaboradores() {
   const res = await executeAction('obtenerEmpleados');
+  if (Array.isArray(res)) return res;
   return res.empleados || res.colaboradores || [];
 }
 
 
 export async function obtenerConfiguraciones() {
   const res = await executeAction('obtenerConfiguraciones');
-  return res.configuraciones || {};
+  return res.configuraciones || res || {};
 }
 
 // ----------------- Panel Supervisor -----------------
