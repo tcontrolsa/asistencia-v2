@@ -75,18 +75,18 @@ export default function SupervisorPage() {
     setLoading(true);
     try {
       const res = await obtenerDatosSupervisor({ filtro: dateFilter });
-      const rows = res.asistencias || res.datos || [];
+      const rows = res.registros || res.asistencias || res.datos || [];
       setRecords(rows);
 
       // Calculate KPIs
       const hoy = new Date().toISOString().split('T')[0];
       const hoyRows = rows.filter(r => (r.fecha || '').startsWith(hoy));
-      const entradas = hoyRows.filter(r => r.entrada || r.tipo === 'Entrada').length;
-      const salidas = hoyRows.filter(r => r.salida || r.tipo === 'Salida').length;
+      const entradas = hoyRows.filter(r => r.entrada || r.tipo === 'Entrada' || r.tipo === 'ENTRADA' || r.tipo === 'SOLO_ALMUERZO').length;
+      const salidas = hoyRows.filter(r => r.salida || r.tipo === 'Salida' || r.tipo === 'SALIDA').length;
       const atrasos = hoyRows.filter(r => (r.estado || '').toLowerCase().includes('atraso')).length;
 
       setStats({
-        totalEmpleados: res.totalEmpleados || 105,
+        totalEmpleados: res.empleados?.length || res.totalEmpleados || 105,
         entradasHoy: entradas,
         salidasHoy: salidas,
         atrasos: atrasos,
@@ -364,22 +364,26 @@ export default function SupervisorPage() {
               ) : (
                 filteredRecords.map((r, idx) => (
                   <tr key={r.id || idx}>
-                    <td className="id-col">{r.id_empleado || r.id}</td>
+                    <td className="id-col">{r.id_empleado || r.empleadoId || r.id}</td>
                     <td className="name-col">{r.nombre || r.empleado_nombre || 'N/A'}</td>
                     <td>{r.fecha ? r.fecha.split('T')[0] : 'N/A'}</td>
-                    <td className="in-col">{r.entrada || r.hora || '--:--'}</td>
-                    <td className="out-col">{r.salida || '--:--'}</td>
-                    <td>{r.horas_trabajadas || '--'}</td>
+                    <td className="in-col">
+                      {r.entrada || ((r.tipo === 'ENTRADA' || r.tipo === 'Entrada' || r.tipo === 'SOLO_ALMUERZO') ? r.hora : '--:--')}
+                    </td>
+                    <td className="out-col">
+                      {r.salida || ((r.tipo === 'SALIDA' || r.tipo === 'Salida') ? r.hora : '--:--')}
+                    </td>
+                    <td>{r.horas_trabajadas || r.horasExtra || '--'}</td>
                     <td>
                       <span className={`badge ${
                         (r.estado || '').toLowerCase().includes('atraso') ? 'badge-danger' : 
                         (r.estado || '').toLowerCase().includes('justific') ? 'badge-warning' : 'badge-success'
                       }`}>
-                        {r.estado || 'Normal'}
+                        {r.estado || r.tipo || 'Registrado'}
                       </span>
                     </td>
-                    <td className="loc-col" title={r.ubicacion || 'Central'}>
-                      {r.ubicacion ? r.ubicacion.slice(0, 24) : 'Oficina Central'}
+                    <td className="loc-col" title={r.ubicacion || r.modo || 'Oficina Central'}>
+                      {r.ubicacion ? r.ubicacion.slice(0, 24) : (r.modo || 'Oficina Central')}
                     </td>
                   </tr>
                 ))

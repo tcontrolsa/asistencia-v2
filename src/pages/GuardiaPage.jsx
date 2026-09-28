@@ -17,7 +17,7 @@ export default function GuardiaPage() {
           obtenerDatosSupervisor({ filtro: 'hoy' }),
         ]);
         setColaboradores(colabs);
-        setAsistenciasHoy(supData.asistencias || supData.datos || []);
+        setAsistenciasHoy(supData.registros || supData.asistencias || supData.datos || []);
       } catch (err) {
         console.error('Error en guardia:', err);
       } finally {
@@ -29,15 +29,15 @@ export default function GuardiaPage() {
 
   // Determine who is currently on site
   const onSiteList = colaboradores.map(c => {
-    const id = String(c.id || c.id_empleado);
-    const punch = asistenciasHoy.find(a => String(a.id_empleado || a.id) === id);
-    const presente = !!(punch && punch.entrada && !punch.salida);
+    const id = String(c.id || c.id_empleado || c.cedula);
+    const punch = asistenciasHoy.find(a => String(a.id_empleado || a.empleadoId || a.id) === id);
+    const presente = !!(punch && (punch.entrada || punch.tipo === 'ENTRADA' || punch.tipo === 'Entrada' || punch.tipo === 'SOLO_ALMUERZO') && !punch.salida && punch.tipo !== 'SALIDA');
     return {
       ...c,
       presente,
-      entrada: punch ? punch.entrada : null,
+      entrada: punch ? (punch.entrada || punch.hora) : null,
       salida: punch ? punch.salida : null,
-      ubicacion: punch ? punch.ubicacion : null,
+      ubicacion: punch ? (punch.ubicacion || punch.modo) : null,
     };
   });
 
