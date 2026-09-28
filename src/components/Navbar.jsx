@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, ShieldCheck, Users, BarChart3, Utensils, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { executeAction } from '../services/api';
 
 export default function Navbar({ activeTab, setActiveTab }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -12,12 +13,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
 
   useEffect(() => {
     // Check PostgreSQL backend health
-    fetch('/api/action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'obtenerConfiguraciones' }),
-    })
-      .then(res => res.json())
+    executeAction('obtenerConfiguraciones')
       .then(data => {
         if (data && data.success) setDbStatus('connected');
         else setDbStatus('disconnected');
