@@ -1,0 +1,47 @@
+// Aplica db/migrations/*.sql en orden, una vez cada una, dentro de una transacción.
+// Uso: node db/scripts/migrate.js [--db nombre] [--produccion] [--reset (solo desarrollo)]
+import fs from 'node:fs';
+import path from 'node:path';
+import { RAIZ, baseDestino, conectar, log } from './lib.js';
+
+const db = baseDestino();
+const dir = path.join(RAIZ, 'db', 'migrations');
+const archivos = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
+
+const c = await conectar(db);
+log(`Base: ${db}`);
+if (process.argv.includes('--reset')) {
+  if (process.argv.includes('--produccion')) throw new Error('--reset no está permitido en producción');
+  await c.query('DROP SCHEMA IF EXISTS api, core, private CASCADE');
+  log('Esquemas api, core y private eliminados (--reset).');
+}
+await c.query(`CREATE SCHEMA IF NOT EXISTS private;
+               CREATE TABLE IF NOT EXISTS private.schema_migrations (
+                 version text PRIMARY KEY, aplicada_en timestamptz NOT NULL DEFAULT now())`);
+const aplicadas = new Set((await c.query('SELECT version FROM private.schema_migrations')).rows.map(r => r.version));
+
+for (const f of archivos) {
+  if (aplicadas.has(f)) continue;
+  const sql = fs.readFileSync(path.join(dir, f), 'utf8');
+  try {
+    await c.query('BEGIN');
+    await c.query(sql);
+    await c.query('INSERT INTO private.schema_migrations (version) VALUES ($1)', [f]);
+    await c.query('COMMIT');
+    log(`✔ ${f}`);
+  } catch (e) {
+    await c.query('ROLLBACK');
+    log(`✘ ${f}: ${e.message}${e.position ? ` (posición ${e.position})` : ''}`);
+    await c.end();
+    process.exit(1);
+  }
+}
+
+// Contraseña del rol con el que se conecta PostgREST (no se guarda en el repositorio).
+if (process.env.PGRST_AUTHENTICATOR_PASSWORD) {
+  const { rows } = await c.query('SELECT quote_literal($1) AS p', [process.env.PGRST_AUTHENTICATOR_PASSWORD]);
+  await c.query(`ALTER ROLE authenticator PASSWORD ${rows[0].p}`);
+  log('Contraseña de authenticator actualizada.');
+}
+await c.end();
+log('Migraciones al día.');

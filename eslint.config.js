@@ -35,4 +35,9 @@ export default [
       ],
     },
   },
+  {
+    // Scripts de base de datos (Node)
+    files: ['db/**/*.js'],
+    languageOptions: { globals: globals.node },
+  },
 ]

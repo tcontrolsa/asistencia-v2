@@ -1,0 +1,58 @@
+# Base de datos — TCONTROL Asistencia (PostgreSQL + PostgREST)
+
+Fase 1 del plan de `docs/migracion-react-postgrest/00_PROMPT_MAESTRO.md`.
+
+## Esquemas
+
+| Esquema | Expuesto por PostgREST | Contenido |
+|---|---|---|
+| `public` | No | Tablas actuales del Express (`empleados`, `registros`, …). **No se modifican**; son la fuente del ETL. |
+| `core` | No | Tablas nuevas con RLS (`empleados`, `marcaciones`, `novedades`, `ajustes_dia`, …). |
+| `api` | **Sí** | Vistas `security_invoker` (aplican RLS) y funciones RPC. |
+| `private` | No | Credenciales (bcrypt), secretos, reglas de negocio y helpers. |
+
+Roles: `authenticator` (con el que se conecta PostgREST) → `anon`, `empleado`, `guardia`, `supervisor`, `supervisor_admin`, `admin`. Jerarquía: `admin ⊃ supervisor_admin ⊃ supervisor ⊃ empleado`.
+
+## Comandos
+
+Todos apuntan a `asistencia_v2_dev` salvo `--db` y, para la base real, `--produccion` explícito.
+
+```bash
+node db/scripts/clonar-dev.js            # crea asistencia_v2_dev y copia public.* desde la base real (solo lectura)
+node db/scripts/migrate.js               # aplica db/migrations/*.sql pendientes
+node db/scripts/migrate.js --reset       # (solo dev) borra api/core/private y vuelve a migrar
+node db/etl/etl.js                       # public.* + CONTROL_ASISTENCIA_2026.xlsx → core.*  (idempotente)
+node db/etl/etl.js --simular             # igual, pero revierte al final
+node db/scripts/test.js                  # pruebas de reglas y permisos (dentro de BEGIN…ROLLBACK)
+```
+
+El reporte de conciliación queda en `db/etl/reportes/` (no versionado: contiene IDs de empleados).
+
+## Reglas de negocio (003_reglas.sql)
+
+| Función | Regla |
+|---|---|
+| `private.hoy()`, `private.ahora_local()` | Fecha y hora en America/Guayaquil (nunca UTC) |
+| `private.tipo_dia`, `private.horario` | LABORABLE 07:30–16:15; SÁBADO/DOMINGO/FERIADO 07:00–15:15 (D-02) |
+| `private.minutos_atraso` | Tolerancia 5 min, cuenta desde la referencia; pasantes y SIN ASISTENCIA = 0 (R-04, R-06) |
+| `private.requiere_motivo_entrada` | Motivo obligatorio después de 07:45 (R-05) |
+| `private.es_salida_anticipada`, `private.horas_extra_auto` | Salida anticipada; extra automática si salida > referencia + 45 min o modo CAMPO (R-07, R-12) |
+| `private.almuerzo_abierto`, `private.almuerzo_en_salida` | Corte 09:30 (R-14) |
+| `private.validar_solicitud_invitado` | Cortes 09:40 / 08:40, sin fechas pasadas, sin Taller (R-15) |
+| `private.periodo` | Período 26–25 (R-16) |
+| `private.validar_geocerca` | Haversine; oficina -0.12910, -78.47815, 250 m (D-21); campo: base asignada, 300 m (R-02) |
+| `private.vacaciones_adjudicadas` | Tabla de `CALCULAR_vacaciones` (D-04) |
+
+Horarios, cortes y coordenadas viven en `core.horarios` y `core.configuracion`; no se repiten en el frontend.
+
+## PostgREST
+
+`db/postgrest/docker-compose.yml` levanta PostgREST 12 en el puerto 3001, al lado del Express. Requiere en `.env`:
+`PGRST_AUTHENTICATOR_PASSWORD`, `PGRST_DB_URI` (usuario `authenticator`), `PGRST_JWT_SECRET`. El login que emite el JWT es de la Fase 2.
+
+## Pendiente para fases siguientes
+
+- Fase 2: `api.login` (bcrypt + JWT + bloqueo 5 fallos/15 min), creación y cambio de contraseña, vinculación de dispositivo.
+- Fase 3–5: RPC de escritura (`marcar`, reporte fuera de área, justificaciones, solicitudes, gestión de jornada) usando las funciones de `private`.
+- Cálculos de jornada neta, bolsa de 4 h y "Por Regularizar" (R-08 a R-11) junto con los reportes de la Fase 5.
+- Tareas programadas (autocompletar salidas, avisos WhatsApp): la imagen actual no tiene `pg_cron`; irán en el worker.
