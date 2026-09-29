@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import MiAsistenciaPage from './pages/MiAsistenciaPage';
+import KioskoPage from './pages/KioskoPage';
 import SupervisorPage from './pages/SupervisorPage';
 import GuardiaPage from './pages/GuardiaPage';
 import CateringPage from './pages/CateringPage';
@@ -14,15 +15,18 @@ function getActor(initial) {
   if (path.includes('supervisor')) return 'supervisor';
   if (path.includes('guardia')) return 'guardia';
   if (path.includes('catering')) return 'catering';
+  if (path.includes('kiosko')) return 'kiosko';
 
-  const hash = window.location.hash.toLowerCase();
+  const hash = window.location.hash.toLowerCase().replace('#', '');
   if (hash.includes('supervisor')) return 'supervisor';
   if (hash.includes('guardia')) return 'guardia';
   if (hash.includes('catering')) return 'catering';
+  if (hash.includes('kiosko')) return 'kiosko';
+  if (hash.includes('asistencia')) return 'asistencia';
 
   const params = new URLSearchParams(window.location.search);
   const p = params.get('page') || params.get('actor');
-  if (p && ['supervisor', 'guardia', 'catering', 'asistencia'].includes(p.toLowerCase())) {
+  if (p && ['supervisor', 'guardia', 'catering', 'asistencia', 'kiosko'].includes(p.toLowerCase())) {
     return p.toLowerCase();
   }
 
@@ -30,16 +34,33 @@ function getActor(initial) {
 }
 
 export default function App({ initialActor }) {
-  const [actor] = useState(() => getActor(initialActor));
+  const [actor, setActor] = useState(() => getActor(initialActor));
+
+  useEffect(() => {
+    const handleHash = () => {
+      const next = getActor(null);
+      setActor(next);
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  const handleSelectActor = (newActor) => {
+    setActor(newActor);
+    if (typeof window !== 'undefined') {
+      window.location.hash = newActor;
+    }
+  };
 
   return (
     <div className="app-root">
-      {/* Top Navbar: Specific to the active actor */}
-      <Navbar currentActor={actor} />
+      {/* Top Navbar with Module Switcher */}
+      <Navbar currentActor={actor} onSelectActor={handleSelectActor} />
 
-      {/* Main Content View: Exclusively renders only the actor's page */}
+      {/* Main Content View */}
       <main className="app-main">
         {actor === 'asistencia' && <MiAsistenciaPage />}
+        {actor === 'kiosko' && <KioskoPage />}
         {actor === 'supervisor' && <SupervisorPage />}
         {actor === 'guardia' && <GuardiaPage />}
         {actor === 'catering' && <CateringPage />}
@@ -52,9 +73,10 @@ export default function App({ initialActor }) {
             <span className="footer-brand">T-Control S.A.</span>
             <span className="footer-separator">•</span>
             <span className="footer-desc">
-              {actor === 'asistencia' ? 'Portal del Colaborador' :
-               actor === 'supervisor' ? 'Panel de Supervisión' :
-               actor === 'guardia' ? 'Terminal de Garita' : 'Servicio de Comedor'}
+              {actor === 'asistencia' ? 'Portal del Colaborador (Credencial & Marcación)' :
+               actor === 'kiosko' ? 'Terminal de Kiosko General (PIN & Cámara)' :
+               actor === 'supervisor' ? 'Panel de Supervisión (KPIs & Aprobaciones)' :
+               actor === 'guardia' ? 'Terminal de Garita (Control Portería & Asistida)' : 'Servicio de Comedor & Catering'}
             </span>
           </div>
 
@@ -63,7 +85,7 @@ export default function App({ initialActor }) {
               <Database size={13} color="#10b981" />
               <span>Base de Datos: PostgreSQL</span>
             </div>
-            <span className="footer-ver">v2.0.0-react</span>
+            <span className="footer-ver">v2.1.0-react</span>
           </div>
         </div>
       </footer>

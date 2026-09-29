@@ -83,12 +83,10 @@ export async function sha256(ascii) {
   }
 
   for (i = 0; i < 8; i++) {
-    for (i = 0; i < 8; i++) {
-      for (j = 3; j + 1; j--) {
-        const b = (hash[i] >> (j * 8)) & 255;
-        result += (b < 16 ? 0 : '') + b.toString(16);
-      }
+    for (j = 3; j >= 0; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += (b < 16 ? '0' : '') + b.toString(16);
     }
-    return result;
   }
+  return result;
 }

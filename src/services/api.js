@@ -60,8 +60,49 @@ export async function verificarEmpleadoTienePin(idEmpleado) {
 }
 
 export async function obtenerRegistrosEmpleado(empleadoId) {
-  const res = await executeAction('obtenerRegistros', { empleadoId: String(empleadoId) });
-  return Array.isArray(res) ? res : (res.registros || res.datos || []);
+  const idStr = String(empleadoId || '').trim();
+  if (!idStr) return [];
+
+  let list = [];
+  try {
+    const res = await executeAction('obtenerRegistros', { 
+      empleadoId: idStr,
+      idEmpleado: idStr,
+      id_empleado: idStr
+    });
+    list = Array.isArray(res) ? res : (res.registros || res.datos || []);
+  } catch (err) {
+    console.warn('[API] Advertencia en obtenerRegistros:', err.message);
+  }
+
+  // Merge with cacheSupervisor if present to ensure recent punches are not missed
+  if (cacheSupervisor && Array.isArray(cacheSupervisor.registros)) {
+    const extra = cacheSupervisor.registros.filter(r => getRecordEmpId(r) === idStr);
+    const existingIds = new Set(list.map(r => r.id || `${r.fecha}_${r.hora}_${r.tipo}`));
+    extra.forEach(r => {
+      const k = r.id || `${r.fecha}_${r.hora}_${r.tipo}`;
+      if (!existingIds.has(k)) {
+        list.push(r);
+        existingIds.add(k);
+      }
+    });
+  }
+
+  // Ensure all returned records have normal identifiers and are sorted chronologically descending
+  list = list.map(r => ({
+    ...r,
+    empleadoId: r.empleadoId || getRecordEmpId(r) || idStr,
+    idEmpleado: r.idEmpleado || getRecordEmpId(r) || idStr,
+    fecha: (r.fecha || '').split('T')[0],
+  }));
+
+  list.sort((a, b) => {
+    const da = `${a.fecha || ''} ${a.hora || ''}`;
+    const db = `${b.fecha || ''} ${b.hora || ''}`;
+    return db.localeCompare(da);
+  });
+
+  return list;
 }
 
 // ----------------- Dispositivos -----------------
@@ -73,19 +114,62 @@ export async function registrarDispositivo(idEmpleado, fingerprint, info = {}) {
   return executeAction('registrarDispositivo', { idEmpleado: String(idEmpleado), fingerprint, ...info });
 }
 
+// ----------------- Helper de Normalización de Registros -----------------
+export function getRecordEmpId(r) {
+  if (!r) return '';
+  const raw = (r.empleadoId && String(r.empleadoId).trim()) || 
+              (r.idEmpleado && String(r.idEmpleado).trim()) || 
+              (r.id_empleado && String(r.id_empleado).trim()) || '';
+  if (raw && !raw.includes('_')) return raw;
+
+  if (r.id && typeof r.id === 'string' && r.id.includes('_')) {
+    const parts = r.id.split('_');
+    if (parts[0] && parts[0].trim()) return parts[0].trim();
+  }
+  return raw || String(r.id || '').trim();
+}
+
+function normalizarRegistro(asistenciaData = {}) {
+  const empId = getRecordEmpId(asistenciaData);
+
+  const lat = asistenciaData.lat ?? asistenciaData.latitud ?? null;
+  const lng = asistenciaData.lng ?? asistenciaData.longitud ?? null;
+
+  const now = new Date();
+  const fecha = asistenciaData.fecha || now.toISOString().split('T')[0];
+  const hora = asistenciaData.hora || now.toTimeString().split(' ')[0];
+
+  return {
+    ...asistenciaData,
+    empleadoId: empId,
+    idEmpleado: empId,
+    id_empleado: empId,
+    lat,
+    lng,
+    latitud: lat,
+    longitud: lng,
+    fecha,
+    hora,
+  };
+}
+
 // ----------------- Kiosco / Asistencia -----------------
 export async function registrarAsistencia(asistenciaData) {
+  const norm = normalizarRegistro(asistenciaData);
+  invalidarCacheSupervisor();
   return executeAction('guardarRegistro', {
-    registro: asistenciaData,
-    ...asistenciaData,
+    ...norm,
+    registro: norm,
   });
 }
 
 export async function registrarSalida(asistenciaData) {
+  const norm = normalizarRegistro({ ...asistenciaData, tipo: 'SALIDA' });
+  invalidarCacheSupervisor();
   return executeAction('guardarRegistro', {
-    registro: { ...asistenciaData, tipo: 'SALIDA' },
+    ...norm,
     tipo: 'SALIDA',
-    ...asistenciaData,
+    registro: norm,
   });
 }
 
@@ -131,21 +215,153 @@ export function invalidarCacheSupervisor() {
 }
 
 export async function actualizarRegistro(id, datos) {
+  invalidarCacheSupervisor();
   return executeAction('actualizarRegistroGeneral', { id, ...datos });
 }
 
 export async function eliminarRegistro(id) {
+  invalidarCacheSupervisor();
   return executeAction('eliminarRegistro', { id });
 }
 
 export async function justificarDia(empleadoId, fecha, motivo) {
-  return executeAction('justificarDia', { empleadoId, fecha, motivo });
+  invalidarCacheSupervisor();
+  const idStr = String(empleadoId);
+  return executeAction('justificarDia', { 
+    empleadoId: idStr, 
+    idEmpleado: idStr, 
+    id_empleado: idStr, 
+    fecha, 
+    motivo 
+  });
 }
 
 export async function obtenerVacaciones(empleadoId) {
-  return executeAction('obtenerVacacionesEmpleado', { empleadoId });
+  return executeAction('obtenerVacacionesEmpleado', { empleadoId: String(empleadoId) });
+}
+
+export async function reportarEmergenciaEmpleado(payload) {
+  invalidarCacheSupervisor();
+  const norm = normalizarRegistro({
+    ...payload,
+    tipo: 'EMERGENCIA_REPORTE',
+    observacion: payload.estado || payload.observacion || 'REPORTE_EMERGENCIA',
+  });
+  return executeAction('guardarRegistro', {
+    ...norm,
+    registro: norm,
+  });
+}
+
+export async function toggleEmergenciaSistema(activa, motivo = 'Simulacro / Emergencia General') {
+  invalidarCacheSupervisor();
+  return executeAction('toggleEmergencia', { activa: Boolean(activa), motivo });
 }
 
 export async function obtenerAlmuerzosExtra(empleadoId, mes, anio) {
   return executeAction('obtenerAlmuerzosExtra', { empleadoId, mes, anio });
+}
+
+// ----------------- Notificaciones WhatsApp -----------------
+export async function enviarNotificacionWhatsApp(telefono, mensaje, tipo = 'alerta') {
+  try {
+    return await executeAction('enviarWhatsApp', {
+      telefono: String(telefono).replace(/\D/g, ''),
+      mensaje,
+      tipo,
+    });
+  } catch (err) {
+    console.warn('[WhatsApp Notifier] No se pudo enviar notificación:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+// ----------------- Catering / Almuerzos -----------------
+export async function reservarAlmuerzo(payload) {
+  try {
+    const res = await executeAction('guardarAlmuerzo', {
+      ...payload,
+      accion: 'reservar',
+    });
+    if (res && res.ok && !res.noImplementado) return res;
+  } catch {
+    // continue to fallback
+  }
+
+  const norm = normalizarRegistro({
+    ...payload,
+    tipo: 'ALMUERZO_RESERVA',
+    almuerzo: payload.opcion || payload.almuerzo || 'Normal',
+  });
+  invalidarCacheSupervisor();
+  return executeAction('guardarRegistro', {
+    ...norm,
+    registro: norm,
+  });
+}
+
+export async function despacharAlmuerzo(payload) {
+  try {
+    const res = await executeAction('guardarAlmuerzo', {
+      ...payload,
+      accion: 'despachar',
+      entregado: true,
+    });
+    if (res && res.ok && !res.noImplementado) return res;
+  } catch {
+    // continue to fallback
+  }
+
+  const norm = normalizarRegistro({
+    ...payload,
+    tipo: 'ALMUERZO_SALIDA',
+    entregado: true,
+  });
+  invalidarCacheSupervisor();
+  return executeAction('guardarRegistro', {
+    ...norm,
+    registro: norm,
+  });
+}
+
+export async function obtenerConsumoAlmuerzosDia(fecha) {
+  const f = fecha || new Date().toISOString().split('T')[0];
+  try {
+    const res = await executeAction('obtenerAlmuerzosDia', { fecha: f });
+    if (res && res.ok && !res.noImplementado) {
+      return Array.isArray(res) ? res : (res.almuerzos || res.datos || []);
+    }
+  } catch {
+    // fallback
+  }
+
+  try {
+    const supData = await obtenerDatosSupervisor({ fecha: f }, false);
+    const all = supData.registros || supData.asistencias || supData.datos || [];
+    return all.filter(r => {
+      const rf = (r.fecha || '').split('T')[0];
+      if (rf !== f) return false;
+      const t = (r.tipo || '').toUpperCase();
+      return t.includes('ALMUERZO') || r.almuerzo === 'SI' || r.almuerzo === 'PLANTA' || r.opcion_menu;
+    });
+  } catch (err) {
+    console.warn('[Catering] Fallback al cargar consumo de almuerzos:', err.message);
+    return [];
+  }
+}
+
+// ----------------- Garita / Marcación Asistida (FN-04) -----------------
+export async function registrarMarcacionAsistida(payload) {
+  const norm = normalizarRegistro(payload);
+  invalidarCacheSupervisor();
+  return executeAction('guardarRegistro', {
+    ...norm,
+    operador: 'GUARDIA',
+    dispositivo: 'GARITA_SEGURIDAD',
+    registro: {
+      ...norm,
+      operador: 'GUARDIA',
+      dispositivo: 'GARITA_SEGURIDAD',
+    },
+  });
 }

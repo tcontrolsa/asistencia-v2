@@ -13,10 +13,19 @@ import {
   Loader2
 } from 'lucide-react';
 import PinPad from '../components/PinPad';
+import CameraCapture from '../components/CameraCapture';
+import JustificationModal from '../components/JustificationModal';
+import { 
+  validarGeocerca, 
+  evaluarEntrada, 
+  evaluarSalida, 
+  TCONTROL_CONFIG 
+} from '../services/rules';
 import { 
   obtenerColaboradores, 
   verificarPIN, 
-  registrarAsistencia 
+  registrarAsistencia,
+  enviarNotificacionWhatsApp 
 } from '../services/api';
 
 export default function KioskoPage() {
@@ -31,6 +40,15 @@ export default function KioskoPage() {
   // Status state
   const [processing, setProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null); // { type: 'success' | 'error', title, desc }
+
+  // Modals & Evaluation States
+  const [showCamera, setShowCamera] = useState(false);
+  const [showJustModal, setShowJustModal] = useState(false);
+  const [justModalConfig, setJustModalConfig] = useState({ title: '', subtitle: '', type: '' });
+  const [lateReason, setLateReason] = useState('');
+  const [earlyExitReason, setEarlyExitReason] = useState('');
+  const [entryEvalData, setEntryEvalData] = useState(null);
+  const [exitEvalData, setExitEvalData] = useState(null);
 
   // Load collaborators on mount
   useEffect(() => {
@@ -86,7 +104,7 @@ export default function KioskoPage() {
     setStatusMessage(null);
   };
 
-  // Submit attendance record
+  // Submit attendance record with Geofence & Schedule Evaluation
   const handleConfirmPin = async () => {
     if (!selectedColab || pin.length < 4 || processing) return;
 
@@ -94,7 +112,6 @@ export default function KioskoPage() {
     setStatusMessage(null);
 
     const empId = String(selectedColab.id || selectedColab.id_empleado);
-    const empNombre = selectedColab.nombre || selectedColab.nombres || `Empleado ${empId}`;
 
     try {
       // 1. Check PIN against PostgreSQL
@@ -110,21 +127,129 @@ export default function KioskoPage() {
         return;
       }
 
-      // 2. Register punch in PostgreSQL
+      // 2. Geofence Validation (RULE-GEO-001: 250m)
+      const geo = validarGeocerca(coords, selectedColab);
+      if (!geo.valido) {
+        setStatusMessage({
+          type: 'error',
+          title: 'Fuera de Perímetro Permitido',
+          desc: geo.mensaje,
+        });
+        setProcessing(false);
+        return;
+      }
+
       const now = new Date();
-      const horaStr = now.toLocaleTimeString('es-EC', { hour12: false });
-      const fechaStr = now.toISOString().split('T')[0];
 
-      const punchPayload = {
-        idEmpleado: empId,
-        nombre: empNombre,
-        tipo: selectedAction,
-        hora: horaStr,
-        fecha: fechaStr,
-        ubicacion: coords ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}` : 'Oficina Central',
-        dispositivo: navigator.userAgent.slice(0, 100),
-      };
+      // 3. Schedule check for Entrada (RULE-HOR-002)
+      if (selectedAction === 'Entrada') {
+        const evalEnt = evaluarEntrada(now);
+        setEntryEvalData(evalEnt);
+        if (evalEnt.esAtraso) {
+          setJustModalConfig({
+            type: 'ATRASO',
+            title: 'Registro con Atraso - Justificación Obligatoria',
+            subtitle: `Hora oficial de entrada: ${TCONTROL_CONFIG.HORA_ENTRADA_OFICIAL} AM (gracia hasta ${TCONTROL_CONFIG.HORA_LIMITE_PUNTUALIDAD} AM). Retraso: ${evalEnt.minutosAtraso} minutos.`,
+          });
+          setShowJustModal(true);
+          setProcessing(false);
+          return;
+        }
+      }
 
+      // 4. Schedule check for Salida (RULE-HOR-003, RULE-HOR-004)
+      if (selectedAction === 'Salida') {
+        const evalSal = evaluarSalida(now);
+        setExitEvalData(evalSal);
+        if (evalSal.esSalidaAnticipada) {
+          setJustModalConfig({
+            type: 'SALIDA_ANTICIPADA',
+            title: 'Salida Anticipada - Justificación Obligatoria',
+            subtitle: `Fin oficial de jornada: ${evalSal.horaOficialSalida}. Anticipación: ${evalSal.minutosAnticipacion} minutos.`,
+          });
+          setShowJustModal(true);
+          setProcessing(false);
+          return;
+        }
+      }
+
+      // 5. Open Camera for Biometric Verification (Selfie)
+      setShowCamera(true);
+      setProcessing(false);
+
+    } catch (err) {
+      console.error('Error al validar PIN:', err);
+      setStatusMessage({
+        type: 'error',
+        title: 'Error de Validación',
+        desc: err.message || 'No se pudo comunicar con el servidor.',
+      });
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmJustification = (motivo) => {
+    setShowJustModal(false);
+    if (justModalConfig.type === 'ATRASO') {
+      setLateReason(motivo);
+    } else if (justModalConfig.type === 'SALIDA_ANTICIPADA') {
+      setEarlyExitReason(motivo);
+    }
+    setShowCamera(true);
+  };
+
+  const handleCapturePhoto = (photoData) => {
+    setShowCamera(false);
+    ejecutarPunchFinal(photoData);
+  };
+
+  const ejecutarPunchFinal = async (photoData) => {
+    if (!selectedColab) return;
+    setProcessing(true);
+
+    const empId = String(selectedColab.id || selectedColab.id_empleado);
+    const empNombre = selectedColab.nombre || selectedColab.nombres || `Empleado ${empId}`;
+    const now = new Date();
+    const horaStr = now.toLocaleTimeString('es-EC', { hour12: false });
+    const fechaStr = now.toISOString().split('T')[0];
+    const geo = validarGeocerca(coords, selectedColab);
+
+    const punchPayload = {
+      empleadoId: empId,
+      idEmpleado: empId,
+      id_empleado: empId,
+      nombre: empNombre,
+      tipo: selectedAction,
+      hora: horaStr,
+      fecha: fechaStr,
+      ubicacion: coords ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}` : 'Oficina Central',
+      lat: coords?.lat || null,
+      lng: coords?.lng || null,
+      latitud: coords?.lat || null,
+      longitud: coords?.lng || null,
+      distancia_metros: geo.distancia,
+      foto: photoData || null,
+      dispositivo: navigator.userAgent.slice(0, 100),
+    };
+
+    if (selectedAction === 'Entrada' && entryEvalData?.esAtraso) {
+      punchPayload.estado_llegada = 'ATRASO';
+      punchPayload.minutos_atraso = entryEvalData.minutosAtraso;
+      punchPayload.razon_entrada_tardia = lateReason;
+    }
+
+    if (selectedAction === 'Salida' && exitEvalData) {
+      if (exitEvalData.esSalidaAnticipada) {
+        punchPayload.tipo_salida = 'ANTICIPADA';
+        punchPayload.razon_salida_temprana = earlyExitReason;
+      }
+      if (exitEvalData.calificaHorasExtras) {
+        punchPayload.horas_extras = 'SI';
+        punchPayload.autoriza = 'SISTEMA (>45 MIN)';
+      }
+    }
+
+    try {
       await registrarAsistencia(punchPayload);
 
       setStatusMessage({
@@ -132,6 +257,19 @@ export default function KioskoPage() {
         title: `¡${selectedAction} Registrada con Éxito!`,
         desc: `${empNombre} a las ${horaStr} hrs.`,
       });
+
+      // Delegate WhatsApp notification on tardiness (FN-10)
+      if (punchPayload.estado_llegada === 'ATRASO') {
+        enviarNotificacionWhatsApp(
+          '593999999999',
+          `⚠️ *ALERTA DE ATRASO:* ${empNombre} (ID: ${empId}) registró entrada a las ${horaStr} (+${entryEvalData?.minutosAtraso} min). Justificación: "${lateReason}"`
+        );
+      }
+
+      setLateReason('');
+      setEarlyExitReason('');
+      setEntryEvalData(null);
+      setExitEvalData(null);
 
       // Reset after 3.5 seconds
       setTimeout(() => {
@@ -324,6 +462,30 @@ export default function KioskoPage() {
           )}
         </div>
       </div>
+
+      {/* Biometric Camera Capture Modal (FN-02) */}
+      {showCamera && (
+        <CameraCapture
+          title={`Verificación Facial - ${selectedAction}`}
+          onCapture={handleCapturePhoto}
+          onCancel={() => {
+            setShowCamera(false);
+            setProcessing(false);
+          }}
+        />
+      )}
+
+      {/* Justification Modal (RULE-HOR-002 / RULE-HOR-003) */}
+      <JustificationModal
+        isOpen={showJustModal}
+        title={justModalConfig.title}
+        subtitle={justModalConfig.subtitle}
+        onConfirm={handleConfirmJustification}
+        onCancel={() => {
+          setShowJustModal(false);
+          setProcessing(false);
+        }}
+      />
 
       <style>{`
         .kiosko-layout {

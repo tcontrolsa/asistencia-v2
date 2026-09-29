@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, ShieldCheck, Users, BarChart3, Utensils, Shield, CheckCircle2, AlertCircle, Settings, X, Wifi, AlertTriangle, IdCard } from 'lucide-react';
 import { executeAction, getApiBase } from '../services/api';
 
-export default function Navbar({ currentActor }) {
+export default function Navbar({ currentActor, onSelectActor }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [dbStatus, setDbStatus] = useState('checking');
   const [showConfig, setShowConfig] = useState(false);
@@ -96,33 +96,53 @@ export default function Navbar({ currentActor }) {
           </div>
         </div>
 
-        {/* Module Title Badge (Isolated, No Public Actor Tabs) */}
-        <div className="navbar-actor-badge">
-          {currentActor === 'supervisor' && (
-            <div className="actor-pill purple">
-              <BarChart3 size={17} />
-              <span>Panel de Supervisor</span>
-            </div>
-          )}
-          {currentActor === 'guardia' && (
-            <div className="actor-pill green">
-              <Shield size={17} />
-              <span>Terminal de Guardia</span>
-            </div>
-          )}
-          {currentActor === 'catering' && (
-            <div className="actor-pill amber">
-              <Utensils size={17} />
-              <span>Servicio de Catering</span>
-            </div>
-          )}
-          {(currentActor === 'asistencia' || !currentActor) && (
-            <div className="actor-pill blue">
-              <IdCard size={17} />
-              <span>Portal del Colaborador</span>
-            </div>
-          )}
-        </div>
+        {/* Interactive Module Navigation */}
+        <nav className="navbar-actor-nav">
+          <button
+            type="button"
+            onClick={() => onSelectActor ? onSelectActor('asistencia') : (window.location.href = 'index.html#asistencia')}
+            className={`actor-nav-btn ${(currentActor === 'asistencia' || !currentActor) ? 'active blue' : ''}`}
+          >
+            <IdCard size={15} />
+            <span>Mi Asistencia</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectActor ? onSelectActor('kiosko') : (window.location.href = 'index.html#kiosko')}
+            className={`actor-nav-btn ${currentActor === 'kiosko' ? 'active cyan' : ''}`}
+          >
+            <Users size={15} />
+            <span>Kiosko</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectActor ? onSelectActor('supervisor') : (window.location.href = 'supervisor.html')}
+            className={`actor-nav-btn ${currentActor === 'supervisor' ? 'active purple' : ''}`}
+          >
+            <BarChart3 size={15} />
+            <span>Supervisor</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectActor ? onSelectActor('guardia') : (window.location.href = 'guardia.html')}
+            className={`actor-nav-btn ${currentActor === 'guardia' ? 'active green' : ''}`}
+          >
+            <Shield size={15} />
+            <span>Garita</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectActor ? onSelectActor('catering') : (window.location.href = 'catering.html')}
+            className={`actor-nav-btn ${currentActor === 'catering' ? 'active amber' : ''}`}
+          >
+            <Utensils size={15} />
+            <span>Comedor</span>
+          </button>
+        </nav>
 
         {/* Live Clock, DB Status & Settings */}
         <div className="navbar-meta">
@@ -297,40 +317,57 @@ export default function Navbar({ currentActor }) {
           color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.05em;
-        }
-        .navbar-actor-badge {
+        .navbar-actor-nav {
           display: flex;
           align-items: center;
-        }
-        .actor-pill {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 7px 16px;
+          gap: 6px;
+          background: rgba(15, 23, 42, 0.6);
+          padding: 4px;
           border-radius: var(--radius-full);
-          font-size: 0.85rem;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .actor-nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: var(--radius-full);
+          font-size: 0.8rem;
           font-weight: 700;
-          letter-spacing: 0.3px;
+          color: var(--text-muted);
+          background: transparent;
+          border: 1px solid transparent;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .actor-pill.blue {
-          background: rgba(59, 130, 246, 0.15);
+        .actor-nav-btn:hover {
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.06);
+        }
+        .actor-nav-btn.active.blue {
+          background: rgba(59, 130, 246, 0.2);
           color: #60a5fa;
-          border: 1px solid rgba(59, 130, 246, 0.35);
+          border-color: rgba(59, 130, 246, 0.4);
         }
-        .actor-pill.purple {
-          background: rgba(168, 85, 247, 0.15);
+        .actor-nav-btn.active.cyan {
+          background: rgba(6, 182, 212, 0.2);
+          color: #22d3ee;
+          border-color: rgba(6, 182, 212, 0.4);
+        }
+        .actor-nav-btn.active.purple {
+          background: rgba(168, 85, 247, 0.2);
           color: #c084fc;
-          border: 1px solid rgba(168, 85, 247, 0.35);
+          border-color: rgba(168, 85, 247, 0.4);
         }
-        .actor-pill.green {
-          background: rgba(16, 185, 129, 0.15);
+        .actor-nav-btn.active.green {
+          background: rgba(16, 185, 129, 0.2);
           color: #34d399;
-          border: 1px solid rgba(16, 185, 129, 0.35);
+          border-color: rgba(16, 185, 129, 0.4);
         }
-        .actor-pill.amber {
-          background: rgba(245, 158, 11, 0.15);
+        .actor-nav-btn.active.amber {
+          background: rgba(245, 158, 11, 0.2);
           color: #fbbf24;
-          border: 1px solid rgba(245, 158, 11, 0.35);
+          border-color: rgba(245, 158, 11, 0.4);
         }
         .navbar-meta {
           display: flex;
