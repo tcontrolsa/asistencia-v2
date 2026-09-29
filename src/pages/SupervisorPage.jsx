@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   CheckCircle, 
@@ -13,11 +13,13 @@ import {
   Filter,
   Eye,
   LogOut,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PinPad from '../components/PinPad';
-import { verificarPIN, obtenerDatosSupervisor } from '../services/api';
+import { verificarPIN, obtenerDatosSupervisor, invalidarCacheSupervisor } from '../services/api';
 
 export default function SupervisorPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -32,6 +34,9 @@ export default function SupervisorPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('hoy'); // 'hoy', 'semana', 'mes', 'todos'
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
+
   const [stats, setStats] = useState({
     totalEmpleados: 105,
     entradasHoy: 0,
@@ -48,16 +53,14 @@ export default function SupervisorPage() {
     try {
       // 1058 is the administrator ID in PostgreSQL
       const res = await verificarPIN('1058', loginPin);
-      if (res.valido || res.success) {
+      if (res.valido || res.success || res.ok) {
         setIsAuthenticated(true);
         sessionStorage.setItem('tcontrol_sup_auth', 'true');
-        loadData();
       } else {
         setLoginError('PIN incorrecto. Acceso denegado.');
         setLoginPin('');
       }
     } catch (err) {
-      // If error, check direct override or display error
       setLoginError(err.message || 'Error al validar credenciales');
     } finally {
       setLoggingIn(false);
@@ -70,15 +73,16 @@ export default function SupervisorPage() {
     setLoginPin('');
   };
 
-  // Fetch data from PostgreSQL
-  const loadData = async () => {
+  // Fetch data from PostgreSQL (using in-memory cache)
+  const loadData = async (force = false) => {
+    if (force) invalidarCacheSupervisor();
     setLoading(true);
     try {
-      const res = await obtenerDatosSupervisor({ filtro: dateFilter });
+      const res = await obtenerDatosSupervisor({}, force);
       const rows = res.registros || res.asistencias || res.datos || [];
       setRecords(rows);
 
-      // Calculate KPIs
+      // Calculate KPIs for today
       const hoy = new Date().toISOString().split('T')[0];
       const hoyRows = rows.filter(r => (r.fecha || '').startsWith(hoy));
       const entradas = hoyRows.filter(r => r.entrada || r.tipo === 'Entrada' || r.tipo === 'ENTRADA' || r.tipo === 'SOLO_ALMUERZO').length;
@@ -98,20 +102,62 @@ export default function SupervisorPage() {
     }
   };
 
+  // Only load when auth status changes; filtering is instantaneous in memory
   useEffect(() => {
     if (isAuthenticated) {
-      loadData();
+      loadData(false);
     }
-  }, [isAuthenticated, dateFilter]);
+  }, [isAuthenticated]);
 
-  // Filtered rows
-  const filteredRecords = records.filter(r => {
-    const q = search.toLowerCase();
-    const nombre = (r.nombre || r.empleado_nombre || '').toLowerCase();
-    const id = String(r.id_empleado || r.id || '');
-    const estado = (r.estado || '').toLowerCase();
-    return nombre.includes(q) || id.includes(q) || estado.includes(q);
-  });
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [dateFilter, search]);
+
+  // In-memory filtered and sorted rows (0ms lag!)
+  const filteredRecords = useMemo(() => {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const ahora = new Date();
+    const sieteDiasAtras = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const mesActual = hoyStr.slice(0, 7);
+
+    let list = records;
+
+    // 1. Filtrar por fecha
+    if (dateFilter === 'hoy') {
+      list = list.filter(r => (r.fecha || '').startsWith(hoyStr));
+    } else if (dateFilter === 'semana') {
+      list = list.filter(r => (r.fecha || '') >= sieteDiasAtras);
+    } else if (dateFilter === 'mes') {
+      list = list.filter(r => (r.fecha || '').startsWith(mesActual));
+    }
+
+    // 2. Filtrar por búsqueda
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      list = list.filter(r => {
+        const nombre = (r.nombre || r.empleado_nombre || '').toLowerCase();
+        const id = String(r.idEmpleado || r.id_empleado || r.empleadoId || r.id || '');
+        const estado = (r.estado || r.tipo || '').toLowerCase();
+        return nombre.includes(q) || id.includes(q) || estado.includes(q);
+      });
+    }
+
+    // 3. Ordenar más reciente primero
+    return list.slice().sort((a, b) => {
+      const da = (a.fecha || '') + ' ' + (a.hora || '');
+      const db = (b.fecha || '') + ' ' + (b.hora || '');
+      return db.localeCompare(da);
+    });
+  }, [records, dateFilter, search]);
+
+  // Paginated records for rendering (maximum 50 rows in DOM at any time)
+  const paginatedRecords = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredRecords.slice(start, start + PAGE_SIZE);
+  }, [filteredRecords, page]);
+
+  const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE) || 1;
 
   // Export to Excel
   const handleExportExcel = () => {
@@ -231,8 +277,9 @@ export default function SupervisorPage() {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={loadData}
+            onClick={() => loadData(true)}
             disabled={loading}
+            title="Recargar datos frescos de PostgreSQL"
           >
             <RefreshCw size={16} className={loading ? 'spinning' : ''} />
             <span>Actualizar</span>
@@ -355,14 +402,14 @@ export default function SupervisorPage() {
                     <span>Consultando base de datos PostgreSQL...</span>
                   </td>
                 </tr>
-              ) : filteredRecords.length === 0 ? (
+              ) : paginatedRecords.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="table-empty">
                     No se encontraron registros para el filtro seleccionado.
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((r, idx) => (
+                paginatedRecords.map((r, idx) => (
                   <tr key={r.id || idx}>
                     <td className="id-col">{r.id_empleado || r.empleadoId || r.id}</td>
                     <td className="name-col">{r.nombre || r.empleado_nombre || 'N/A'}</td>
@@ -391,6 +438,36 @@ export default function SupervisorPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination bar */}
+        {totalPages > 1 && (
+          <div className="table-pagination">
+            <span className="pagination-info">
+              Mostrando {((page - 1) * PAGE_SIZE) + 1} - {Math.min(page * PAGE_SIZE, filteredRecords.length)} de {filteredRecords.length} registros
+            </span>
+            <div className="pagination-controls">
+              <button
+                type="button"
+                className="page-btn"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft size={16} />
+                <span>Anterior</span>
+              </button>
+              <span className="page-current">Página {page} de {totalPages}</span>
+              <button
+                type="button"
+                className="page-btn"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                <span>Siguiente</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -616,6 +693,51 @@ export default function SupervisorPage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+
+        .table-pagination {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .pagination-info {
+          font-size: 0.8rem;
+          color: var(--text-dim);
+        }
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .page-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: var(--text-main);
+          font-size: 0.82rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.12);
+        }
+        .page-btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+        .page-current {
+          font-size: 0.82rem;
+          color: var(--text-dim);
+          font-weight: 600;
         }
 
         @media (max-width: 900px) {

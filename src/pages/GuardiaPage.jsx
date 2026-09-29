@@ -17,7 +17,9 @@ export default function GuardiaPage() {
           obtenerDatosSupervisor({ filtro: 'hoy' }),
         ]);
         setColaboradores(colabs);
-        setAsistenciasHoy(supData.registros || supData.asistencias || supData.datos || []);
+        const hoy = new Date().toISOString().split('T')[0];
+        const all = supData.registros || supData.asistencias || supData.datos || [];
+        setAsistenciasHoy(all.filter(r => (r.fecha || '').startsWith(hoy)));
       } catch (err) {
         console.error('Error en guardia:', err);
       } finally {
@@ -30,7 +32,7 @@ export default function GuardiaPage() {
   // Determine who is currently on site
   const onSiteList = colaboradores.map(c => {
     const id = String(c.id || c.id_empleado || c.cedula);
-    const punch = asistenciasHoy.find(a => String(a.id_empleado || a.empleadoId || a.id) === id);
+    const punch = asistenciasHoy.find(a => String(a.idEmpleado || a.id_empleado || a.empleadoId || a.id) === id);
     const presente = !!(punch && (punch.entrada || punch.tipo === 'ENTRADA' || punch.tipo === 'Entrada' || punch.tipo === 'SOLO_ALMUERZO') && !punch.salida && punch.tipo !== 'SALIDA');
     return {
       ...c,

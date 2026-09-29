@@ -85,12 +85,20 @@ export async function registrarSalida(asistenciaData) {
 }
 
 // ----------------- Colaboradores & Config -----------------
-export async function obtenerColaboradores() {
-  const res = await executeAction('obtenerEmpleados');
-  if (Array.isArray(res)) return res;
-  return res.empleados || res.colaboradores || [];
-}
+let cacheEmpleados = null;
+let cacheEmpleadosTime = 0;
 
+export async function obtenerColaboradores(force = false) {
+  const now = Date.now();
+  if (!force && cacheEmpleados && (now - cacheEmpleadosTime < 5 * 60 * 1000)) {
+    return cacheEmpleados;
+  }
+  const res = await executeAction('obtenerEmpleados');
+  const list = Array.isArray(res) ? res : (res.empleados || res.colaboradores || []);
+  cacheEmpleados = list;
+  cacheEmpleadosTime = now;
+  return list;
+}
 
 export async function obtenerConfiguraciones() {
   const res = await executeAction('obtenerConfiguraciones');
@@ -98,8 +106,23 @@ export async function obtenerConfiguraciones() {
 }
 
 // ----------------- Panel Supervisor -----------------
-export async function obtenerDatosSupervisor(filtro = {}) {
-  return executeAction('obtenerDatosSupervisor', filtro);
+let cacheSupervisor = null;
+let cacheSupervisorTime = 0;
+
+export async function obtenerDatosSupervisor(filtro = {}, force = false) {
+  const now = Date.now();
+  if (!force && cacheSupervisor && (now - cacheSupervisorTime < 90 * 1000)) {
+    return cacheSupervisor;
+  }
+  const data = await executeAction('obtenerDatosSupervisor', filtro);
+  cacheSupervisor = data;
+  cacheSupervisorTime = now;
+  return data;
+}
+
+export function invalidarCacheSupervisor() {
+  cacheSupervisor = null;
+  cacheSupervisorTime = 0;
 }
 
 export async function actualizarRegistro(id, datos) {
