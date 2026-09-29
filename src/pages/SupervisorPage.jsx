@@ -31,15 +31,18 @@ export default function SupervisorPage() {
 
   // Supervisor Data
   const [records, setRecords] = useState([]);
+  const [empleados, setEmpleados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('hoy'); // 'hoy', 'semana', 'mes', 'todos'
+  const [statusFilter, setStatusFilter] = useState('todos'); // 'todos' | 'presente' | 'sin_marcar' | 'atraso' | 'finalizado'
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
   const [stats, setStats] = useState({
     totalEmpleados: 105,
-    entradasHoy: 0,
+    presentesHoy: 0,
+    sinMarcarHoy: 0,
     salidasHoy: 0,
     atrasos: 0,
   });
@@ -80,20 +83,51 @@ export default function SupervisorPage() {
     try {
       const res = await obtenerDatosSupervisor({}, force);
       const rows = res.registros || res.asistencias || res.datos || [];
+      const emps = res.empleados || [];
       setRecords(rows);
+      setEmpleados(emps);
 
       // Calculate KPIs for today
       const hoy = new Date().toISOString().split('T')[0];
       const hoyRows = rows.filter(r => (r.fecha || '').startsWith(hoy));
-      const entradas = hoyRows.filter(r => r.entrada || r.tipo === 'Entrada' || r.tipo === 'ENTRADA' || r.tipo === 'SOLO_ALMUERZO').length;
-      const salidas = hoyRows.filter(r => r.salida || r.tipo === 'Salida' || r.tipo === 'SALIDA').length;
-      const atrasos = hoyRows.filter(r => (r.estado || '').toLowerCase().includes('atraso')).length;
+      
+      const mapPunches = {};
+      hoyRows.forEach(r => {
+        const empId = String(r.idEmpleado || r.id_empleado || r.empleadoId || r.id || '');
+        if (!mapPunches[empId]) mapPunches[empId] = [];
+        mapPunches[empId].push(r);
+      });
+
+      let presCount = 0;
+      let sinMarcarCount = 0;
+      let salidasCount = 0;
+      let atrasosCount = 0;
+
+      emps.forEach(emp => {
+        const empId = String(emp.id || emp.id_empleado || '');
+        const punches = mapPunches[empId] || [];
+        const ent = punches.find(r => r.tipo === 'ENTRADA' || r.tipo === 'Entrada' || r.tipo === 'SOLO_ALMUERZO');
+        const sal = punches.find(r => r.tipo === 'SALIDA' || r.tipo === 'Salida');
+
+        if (!ent && !sal) {
+          sinMarcarCount++;
+        } else if (ent && !sal) {
+          presCount++;
+          if (ent.hora) {
+            const [h, m] = ent.hora.split(':').map(Number);
+            if (h > 7 || (h === 7 && m > 45)) atrasosCount++;
+          }
+        } else if (sal) {
+          salidasCount++;
+        }
+      });
 
       setStats({
-        totalEmpleados: res.empleados?.length || res.totalEmpleados || 105,
-        entradasHoy: entradas,
-        salidasHoy: salidas,
-        atrasos: atrasos,
+        totalEmpleados: emps.length || 105,
+        presentesHoy: presCount,
+        sinMarcarHoy: sinMarcarCount,
+        salidasHoy: salidasCount,
+        atrasos: atrasosCount,
       });
     } catch (err) {
       console.error('Error al cargar datos del supervisor:', err);
@@ -112,44 +146,154 @@ export default function SupervisorPage() {
   // Reset page when filter or search changes
   useEffect(() => {
     setPage(1);
-  }, [dateFilter, search]);
+  }, [dateFilter, statusFilter, search]);
 
-  // In-memory filtered and sorted rows (0ms lag!)
-  const filteredRecords = useMemo(() => {
+  // Consolidated Daily Sábana (1 row per collaborator)
+  const consolidatedList = useMemo(() => {
     const hoyStr = new Date().toISOString().split('T')[0];
     const ahora = new Date();
     const sieteDiasAtras = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const mesActual = hoyStr.slice(0, 7);
 
-    let list = records;
-
-    // 1. Filtrar por fecha
     if (dateFilter === 'hoy') {
-      list = list.filter(r => (r.fecha || '').startsWith(hoyStr));
-    } else if (dateFilter === 'semana') {
-      list = list.filter(r => (r.fecha || '') >= sieteDiasAtras);
-    } else if (dateFilter === 'mes') {
-      list = list.filter(r => (r.fecha || '').startsWith(mesActual));
+      const hoyRows = records.filter(r => (r.fecha || '').startsWith(hoyStr));
+      const mapPunches = {};
+      hoyRows.forEach(r => {
+        const empId = String(r.idEmpleado || r.id_empleado || r.empleadoId || r.id || '');
+        if (!mapPunches[empId]) mapPunches[empId] = [];
+        mapPunches[empId].push(r);
+      });
+
+      return empleados.map(emp => {
+        const empId = String(emp.id || emp.id_empleado || '');
+        const punches = mapPunches[empId] || [];
+
+        const entradaReg = punches.find(r => r.tipo === 'ENTRADA' || r.tipo === 'Entrada' || r.tipo === 'SOLO_ALMUERZO');
+        const salidaReg = punches.find(r => r.tipo === 'SALIDA' || r.tipo === 'Salida');
+        const almuerzoReg = punches.find(r => r.tipo === 'ALMUERZO_SALIDA' || r.tipo === 'ALMUERZO_ENTRADA' || r.tipo === 'SOLO_ALMUERZO' || r.almuerzo === 'SI' || r.almuerzo === 'PLANTA');
+
+        const horaEntrada = entradaReg?.hora ? entradaReg.hora.slice(0, 5) : '--:--';
+        const horaSalida = salidaReg?.hora ? salidaReg.hora.slice(0, 5) : '--:--';
+        const tieneEntrada = Boolean(entradaReg);
+        const tieneSalida = Boolean(salidaReg);
+        const tieneAlmuerzo = Boolean(almuerzoReg);
+
+        let esAtraso = false;
+        if (entradaReg && entradaReg.hora) {
+          const [h, m] = entradaReg.hora.split(':').map(Number);
+          if (h > 7 || (h === 7 && m > 45)) esAtraso = true;
+        }
+
+        let estado = 'Sin Marcar';
+        let statusCode = 'sin_marcar';
+
+        if (tieneEntrada && tieneSalida) {
+          estado = 'Jornada Finalizada';
+          statusCode = 'finalizado';
+        } else if (tieneEntrada && !tieneSalida) {
+          if (tieneAlmuerzo && !punches.some(p => p.tipo === 'ALMUERZO_ENTRADA')) {
+            estado = 'En Almuerzo';
+            statusCode = 'almuerzo';
+          } else if (esAtraso) {
+            estado = 'Atraso (En Planta)';
+            statusCode = 'atraso';
+          } else {
+            estado = 'En Planta';
+            statusCode = 'presente';
+          }
+        }
+
+        let horas = '--';
+        if (tieneEntrada && tieneSalida && entradaReg.hora && salidaReg.hora) {
+          const [eh, em] = entradaReg.hora.split(':').map(Number);
+          const [sh, sm] = salidaReg.hora.split(':').map(Number);
+          const diff = (sh * 60 + sm) - (eh * 60 + em);
+          if (diff > 0) horas = (diff / 60).toFixed(1) + ' hrs';
+        }
+
+        return {
+          id: empId,
+          nombre: emp.nombre || emp.nombres || `Colaborador ${empId}`,
+          area: emp.area || emp.departamento || 'General',
+          cargo: emp.cargo || 'Colaborador',
+          foto_url: emp.foto_url || '',
+          fecha: hoyStr,
+          entrada: horaEntrada,
+          almuerzo: tieneAlmuerzo ? (almuerzoReg.hora ? almuerzoReg.hora.slice(0, 5) : 'Planta') : '--:--',
+          salida: horaSalida,
+          horas,
+          estado,
+          statusCode,
+          ubicacion: entradaReg?.ubicacion || entradaReg?.modo || emp.area || 'Oficina Central'
+        };
+      });
+    } else {
+      let list = records;
+      if (dateFilter === 'semana') {
+        list = list.filter(r => (r.fecha || '') >= sieteDiasAtras);
+      } else if (dateFilter === 'mes') {
+        list = list.filter(r => (r.fecha || '').startsWith(mesActual));
+      }
+
+      const grouped = {};
+      list.forEach(r => {
+        const empId = String(r.idEmpleado || r.id_empleado || r.empleadoId || r.id || '');
+        const f = (r.fecha || '').split('T')[0];
+        const key = `${f}_${empId}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            id: empId,
+            nombre: r.nombre || r.empleado_nombre || `Colaborador ${empId}`,
+            area: r.area || 'General',
+            cargo: r.cargo || 'Colaborador',
+            foto_url: '',
+            fecha: f,
+            entrada: '--:--',
+            almuerzo: '--:--',
+            salida: '--:--',
+            horas: '--',
+            estado: 'Registrado',
+            statusCode: 'presente',
+            ubicacion: r.ubicacion || r.modo || 'Oficina Central'
+          };
+        }
+        if (r.tipo === 'ENTRADA' || r.tipo === 'Entrada') {
+          grouped[key].entrada = r.hora ? r.hora.slice(0, 5) : '--:--';
+        } else if (r.tipo === 'SALIDA' || r.tipo === 'Salida') {
+          grouped[key].salida = r.hora ? r.hora.slice(0, 5) : '--:--';
+        } else if (r.tipo?.includes('ALMUERZO')) {
+          grouped[key].almuerzo = r.hora ? r.hora.slice(0, 5) : 'Registrado';
+        }
+      });
+
+      return Object.values(grouped).sort((a, b) => (b.fecha + ' ' + b.entrada).localeCompare(a.fecha + ' ' + a.entrada));
+    }
+  }, [records, empleados, dateFilter]);
+
+  // In-memory filtered and sorted rows (0ms lag!)
+  const filteredRecords = useMemo(() => {
+    let list = consolidatedList;
+
+    if (dateFilter === 'hoy' && statusFilter !== 'todos') {
+      if (statusFilter === 'presente') {
+        list = list.filter(r => r.statusCode === 'presente' || r.statusCode === 'atraso' || r.statusCode === 'almuerzo');
+      } else {
+        list = list.filter(r => r.statusCode === statusFilter);
+      }
     }
 
-    // 2. Filtrar por búsqueda
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       list = list.filter(r => {
-        const nombre = (r.nombre || r.empleado_nombre || '').toLowerCase();
-        const id = String(r.idEmpleado || r.id_empleado || r.empleadoId || r.id || '');
-        const estado = (r.estado || r.tipo || '').toLowerCase();
-        return nombre.includes(q) || id.includes(q) || estado.includes(q);
+        return (r.nombre || '').toLowerCase().includes(q) ||
+               String(r.id).includes(q) ||
+               (r.area || '').toLowerCase().includes(q) ||
+               (r.estado || '').toLowerCase().includes(q);
       });
     }
 
-    // 3. Ordenar más reciente primero
-    return list.slice().sort((a, b) => {
-      const da = (a.fecha || '') + ' ' + (a.hora || '');
-      const db = (b.fecha || '') + ' ' + (b.hora || '');
-      return db.localeCompare(da);
-    });
-  }, [records, dateFilter, search]);
+    return list;
+  }, [consolidatedList, statusFilter, dateFilter, search]);
 
   // Paginated records for rendering (maximum 50 rows in DOM at any time)
   const paginatedRecords = useMemo(() => {
@@ -164,14 +308,16 @@ export default function SupervisorPage() {
     if (filteredRecords.length === 0) return;
 
     const exportData = filteredRecords.map(r => ({
-      'ID Empleado': r.id_empleado || r.id,
-      'Colaborador': r.nombre || r.empleado_nombre || 'N/A',
-      'Fecha': r.fecha ? r.fecha.split('T')[0] : 'N/A',
-      'Entrada': r.entrada || r.hora || 'N/A',
-      'Salida': r.salida || '--:--',
-      'Horas': r.horas_trabajadas || '--',
-      'Estado': r.estado || 'Normal',
-      'Ubicación': r.ubicacion || 'Central',
+      'ID Empleado': r.id,
+      'Colaborador': r.nombre,
+      'Área': r.area,
+      'Fecha': r.fecha,
+      'Entrada': r.entrada,
+      'Almuerzo': r.almuerzo,
+      'Salida': r.salida,
+      'Horas': r.horas,
+      'Estado': r.estado,
+      'Ubicación': r.ubicacion,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -307,45 +453,75 @@ export default function SupervisorPage() {
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
+      {/* KPI Stats Cards (Interactive Filters) */}
       <div className="kpi-grid">
-        <div className="glass-card kpi-card">
+        <div 
+          className={`glass-card kpi-card clickable ${statusFilter === 'todos' ? 'active-filter' : ''}`}
+          onClick={() => setStatusFilter('todos')}
+          title="Ver todos los colaboradores"
+        >
           <div className="kpi-icon blue">
             <Users size={22} />
           </div>
           <div className="kpi-content">
-            <span className="kpi-label">Colaboradores Activos</span>
+            <span className="kpi-label">Todos los Colaboradores</span>
             <span className="kpi-value">{stats.totalEmpleados}</span>
           </div>
         </div>
 
-        <div className="glass-card kpi-card">
+        <div 
+          className={`glass-card kpi-card clickable ${statusFilter === 'presente' ? 'active-filter' : ''}`}
+          onClick={() => setStatusFilter('presente')}
+          title="Filtrar colaboradores en planta"
+        >
           <div className="kpi-icon green">
             <CheckCircle size={22} />
           </div>
           <div className="kpi-content">
-            <span className="kpi-label">Entradas Registradas</span>
-            <span className="kpi-value">{stats.entradasHoy}</span>
+            <span className="kpi-label">En Planta (Presentes)</span>
+            <span className="kpi-value">{stats.presentesHoy}</span>
           </div>
         </div>
 
-        <div className="glass-card kpi-card">
+        <div 
+          className={`glass-card kpi-card clickable ${statusFilter === 'sin_marcar' ? 'active-filter' : ''}`}
+          onClick={() => setStatusFilter('sin_marcar')}
+          title="Filtrar colaboradores sin marcación hoy"
+        >
           <div className="kpi-icon yellow">
             <Clock size={22} />
           </div>
           <div className="kpi-content">
-            <span className="kpi-label">Salidas Registradas</span>
-            <span className="kpi-value">{stats.salidasHoy}</span>
+            <span className="kpi-label">Sin Marcar / Ausentes</span>
+            <span className="kpi-value">{stats.sinMarcarHoy}</span>
           </div>
         </div>
 
-        <div className="glass-card kpi-card">
+        <div 
+          className={`glass-card kpi-card clickable ${statusFilter === 'atraso' ? 'active-filter' : ''}`}
+          onClick={() => setStatusFilter('atraso')}
+          title="Filtrar colaboradores con atraso"
+        >
           <div className="kpi-icon red">
             <AlertCircle size={22} />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Atrasos Detectados</span>
             <span className="kpi-value">{stats.atrasos}</span>
+          </div>
+        </div>
+
+        <div 
+          className={`glass-card kpi-card clickable ${statusFilter === 'finalizado' ? 'active-filter' : ''}`}
+          onClick={() => setStatusFilter('finalizado')}
+          title="Filtrar colaboradores que ya marcaron salida"
+        >
+          <div className="kpi-icon purple" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+            <LogOut size={22} />
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Jornada Finalizada</span>
+            <span className="kpi-value">{stats.salidasHoy}</span>
           </div>
         </div>
       </div>
@@ -356,7 +532,7 @@ export default function SupervisorPage() {
           <Search size={18} className="search-icon" />
           <input
             type="text"
-            placeholder="Buscar por colaborador, ID o estado..."
+            placeholder="Buscar por colaborador, ID, cargo o área..."
             className="input-field search-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -364,13 +540,16 @@ export default function SupervisorPage() {
         </div>
 
         <div className="filter-pills">
-          <span className="filter-label"><Filter size={14} /> Filtro:</span>
+          <span className="filter-label"><Filter size={14} /> Período:</span>
           {['hoy', 'semana', 'mes', 'todos'].map((filtro) => (
             <button
               key={filtro}
               type="button"
               className={`pill-btn ${dateFilter === filtro ? 'active' : ''}`}
-              onClick={() => setDateFilter(filtro)}
+              onClick={() => {
+                setDateFilter(filtro);
+                setStatusFilter('todos');
+              }}
             >
               {filtro === 'hoy' ? 'Hoy' : filtro === 'semana' ? 'Esta Semana' : filtro === 'mes' ? 'Este Mes' : 'Todos'}
             </button>
@@ -386,8 +565,10 @@ export default function SupervisorPage() {
               <tr>
                 <th>ID</th>
                 <th>Colaborador</th>
+                <th>Área</th>
                 <th>Fecha</th>
                 <th>Entrada</th>
+                <th>Almuerzo</th>
                 <th>Salida</th>
                 <th>Horas</th>
                 <th>Estado</th>
@@ -397,40 +578,63 @@ export default function SupervisorPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="table-loading">
+                  <td colSpan="10" className="table-loading">
                     <RefreshCw size={24} className="spinning" />
                     <span>Consultando base de datos PostgreSQL...</span>
                   </td>
                 </tr>
               ) : paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="table-empty">
+                  <td colSpan="10" className="table-empty">
                     No se encontraron registros para el filtro seleccionado.
                   </td>
                 </tr>
               ) : (
                 paginatedRecords.map((r, idx) => (
                   <tr key={r.id || idx}>
-                    <td className="id-col">{r.id_empleado || r.empleadoId || r.id}</td>
-                    <td className="name-col">{r.nombre || r.empleado_nombre || 'N/A'}</td>
-                    <td>{r.fecha ? r.fecha.split('T')[0] : 'N/A'}</td>
-                    <td className="in-col">
-                      {r.entrada || ((r.tipo === 'ENTRADA' || r.tipo === 'Entrada' || r.tipo === 'SOLO_ALMUERZO') ? r.hora : '--:--')}
+                    <td className="id-col">{r.id}</td>
+                    <td className="name-col">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {r.foto_url ? (
+                          <img 
+                            src={r.foto_url} 
+                            alt={r.nombre} 
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
+                          />
+                        ) : null}
+                        <div>
+                          <strong>{r.nombre}</strong>
+                          <div style={{ fontSize: '10px', color: '#64748b' }}>{r.cargo}</div>
+                        </div>
+                      </div>
                     </td>
-                    <td className="out-col">
-                      {r.salida || ((r.tipo === 'SALIDA' || r.tipo === 'Salida') ? r.hora : '--:--')}
+                    <td>{r.area || 'General'}</td>
+                    <td>{r.fecha || 'N/A'}</td>
+                    <td className="in-col" style={{ color: r.entrada !== '--:--' ? '#34d399' : '#64748b', fontWeight: 700 }}>
+                      {r.entrada}
                     </td>
-                    <td>{r.horas_trabajadas || r.horasExtra || '--'}</td>
+                    <td style={{ color: r.almuerzo !== '--:--' ? '#fbbf24' : '#64748b' }}>
+                      {r.almuerzo}
+                    </td>
+                    <td className="out-col" style={{ color: r.salida !== '--:--' ? '#60a5fa' : '#64748b', fontWeight: 700 }}>
+                      {r.salida}
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{r.horas}</td>
                     <td>
                       <span className={`badge ${
-                        (r.estado || '').toLowerCase().includes('atraso') ? 'badge-danger' : 
-                        (r.estado || '').toLowerCase().includes('justific') ? 'badge-warning' : 'badge-success'
-                      }`}>
-                        {r.estado || r.tipo || 'Registrado'}
+                        r.statusCode === 'atraso' ? 'badge-danger' : 
+                        r.statusCode === 'presente' ? 'badge-success' : 
+                        r.statusCode === 'almuerzo' ? 'badge-warning' : 
+                        r.statusCode === 'finalizado' ? 'badge-info' : 'badge-neutral'
+                      }`} style={
+                        r.statusCode === 'sin_marcar' ? { background: 'rgba(100, 116, 139, 0.15)', color: '#94a3b8' } :
+                        r.statusCode === 'finalizado' ? { background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' } : {}
+                      }>
+                        {r.estado}
                       </span>
                     </td>
-                    <td className="loc-col" title={r.ubicacion || r.modo || 'Oficina Central'}>
-                      {r.ubicacion ? r.ubicacion.slice(0, 24) : (r.modo || 'Oficina Central')}
+                    <td className="loc-col" title={r.ubicacion || 'Oficina Central'}>
+                      {r.ubicacion ? r.ubicacion.slice(0, 24) : 'Oficina Central'}
                     </td>
                   </tr>
                 ))
@@ -438,6 +642,7 @@ export default function SupervisorPage() {
             </tbody>
           </table>
         </div>
+
 
         {/* Pagination bar */}
         {totalPages > 1 && (
@@ -517,6 +722,19 @@ export default function SupervisorPage() {
           display: flex;
           align-items: center;
           gap: 16px;
+        }
+        .kpi-card.clickable {
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .kpi-card.clickable:hover {
+          transform: translateY(-2px);
+          border-color: rgba(59, 130, 246, 0.4);
+        }
+        .kpi-card.active-filter {
+          background: rgba(59, 130, 246, 0.12);
+          border: 1.5px solid rgba(59, 130, 246, 0.5);
+          box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2);
         }
         .kpi-icon {
           width: 52px;

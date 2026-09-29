@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, ShieldCheck, Users, BarChart3, Utensils, Shield, CheckCircle2, AlertCircle, Settings, X, Wifi, AlertTriangle } from 'lucide-react';
+import { Clock, ShieldCheck, Users, BarChart3, Utensils, Shield, CheckCircle2, AlertCircle, Settings, X, Wifi, AlertTriangle, IdCard } from 'lucide-react';
 import { executeAction, getApiBase } from '../services/api';
 
 export default function Navbar({ activeTab, setActiveTab }) {
@@ -99,11 +99,11 @@ export default function Navbar({ activeTab, setActiveTab }) {
         {/* Navigation Tabs */}
         <nav className="navbar-tabs">
           <button
-            onClick={() => setActiveTab('kiosko')}
-            className={`nav-tab ${activeTab === 'kiosko' ? 'active' : ''}`}
+            onClick={() => setActiveTab('asistencia')}
+            className={`nav-tab ${activeTab === 'asistencia' ? 'active' : ''}`}
           >
-            <Clock size={18} />
-            <span>Kiosco</span>
+            <IdCard size={18} />
+            <span>Mi Asistencia</span>
           </button>
 
           <button

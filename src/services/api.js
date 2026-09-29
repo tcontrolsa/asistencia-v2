@@ -59,6 +59,11 @@ export async function verificarEmpleadoTienePin(idEmpleado) {
   return executeAction('verificarEmpleadoTienePin', { idEmpleado: String(idEmpleado) });
 }
 
+export async function obtenerRegistrosEmpleado(empleadoId) {
+  const res = await executeAction('obtenerRegistros', { empleadoId: String(empleadoId) });
+  return Array.isArray(res) ? res : (res.registros || res.datos || []);
+}
+
 // ----------------- Dispositivos -----------------
 export async function verificarDispositivo(idEmpleado, fingerprint) {
   return executeAction('verificarDispositivo', { idEmpleado: String(idEmpleado), fingerprint });

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
-import KioskoPage from './pages/KioskoPage';
+import MiAsistenciaPage from './pages/MiAsistenciaPage';
 import SupervisorPage from './pages/SupervisorPage';
 import GuardiaPage from './pages/GuardiaPage';
 import CateringPage from './pages/CateringPage';
 import { Database, ShieldCheck, Heart } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('kiosko');
+  const [activeTab, setActiveTab] = useState('asistencia');
 
   return (
     <div className="app-root">
@@ -16,7 +16,7 @@ export default function App() {
 
       {/* Main Content View */}
       <main className="app-main">
-        {activeTab === 'kiosko' && <KioskoPage />}
+        {activeTab === 'asistencia' && <MiAsistenciaPage />}
         {activeTab === 'supervisor' && <SupervisorPage />}
         {activeTab === 'guardia' && <GuardiaPage />}
         {activeTab === 'catering' && <CateringPage />}
