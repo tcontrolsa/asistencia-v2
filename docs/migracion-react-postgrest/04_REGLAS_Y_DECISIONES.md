@@ -121,3 +121,11 @@ Preguntas abiertas: ver P-03 y P-04.
 | P-11 | Tres registros de desvinculados con tipo `SALIDA_DE_TCONTROL` / `SALIDA_TCONTROL` (ago-2026) no corresponden a ningún tipo conocido y no se importaron. ¿Se descartan o equivalen a `SALIDA`? | ETL |
 
 **Supuestos de la Fase 1 (a confirmar):** mientras se responde P-09, el ID `1058` queda como `ADMIN` (paridad con el legado) y los otros 3 supervisores como `SUPERVISOR`; en fin de semana y feriado el límite para exigir motivo de atraso es 07:15 (P-06); feriados 2026 cargados desde la lista de `supervisor_core.js` como `PROVISIONAL` (P-01); solicitudes de invitados históricas sin estado se importan como `ENTREGADO`.
+
+## 7. Respuestas del 2026-09-29 (tarde)
+
+| ID | Respuesta | Implementación |
+|---|---|---|
+| P-10 | **Replicar la hoja**: las filas repetidas cuentan como días tomados | `core.vacaciones_saldo_inicial.dias_duplicados_legado` (migración 006). 8 empleados, 23 filas. Con esto 93 de 95 empleados dan igual que `CALCULAR_vacaciones`; los 2 restantes: 1036 tiene una vacación del 29-sep aún no pasada a la hoja `VACACIONES` (correcto), y 1053 tiene el 22-sep como VACACIONES en la hoja `VACACIONES` y como FALTA en `REGISTROS` (**revisar**; hoy gana FALTA) |
+
+**Fase 2 — supuestos a confirmar:** (1) para crear la contraseña en el primer ingreso se pide la **cédula registrada** (sin ese dato, cualquiera que conozca un ID —son números correlativos— podría adueñarse de la cuenta); quien no tenga cédula registrada recibe una contraseña temporal de su supervisor. (2) Duración de sesión: empleado y guardia 30 días (PWA con dispositivo vinculado), supervisor y admin 12 horas. (3) Al vincular un dispositivo nuevo se cierra la sesión del anterior (R-22). (4) Un supervisor no puede resetear a otro supervisor ni a un admin; un supervisor admin sí resetea supervisores.

@@ -465,6 +465,29 @@ try {
     ON CONFLICT (empleado_id, anio) DO UPDATE SET dias = EXCLUDED.dias`, [J(saldos)]);
   paso('vacaciones_saldo_inicial', { en_hoja: saldos.length, cargados: sal.rowCount });
 
+  // P-10: filas repetidas de la hoja VACACIONES (hasta hoy) que COUNTIFS cuenta dos veces → ajuste histórico
+  const hoyStr = enGuayaquil(new Date()).fecha;
+  const repetidas = {};
+  const vistos = new Set();
+  for (const v of hojaVacaciones) {
+    if ((v.tipo || '') !== 'VACACIONES' || v.fecha > hoyStr) continue;
+    const k = `${v.empleado_id}|${v.fecha}`;
+    if (vistos.has(k)) (repetidas[v.empleado_id] ??= []).push(v.fecha);
+    else vistos.add(k);
+  }
+  const dup = Object.entries(repetidas).map(([id, fechas]) => ({ id, n: fechas.length, fechas }));
+  await c.query(`UPDATE core.vacaciones_saldo_inicial SET dias_duplicados_legado = 0 WHERE anio = ${ANIO_VACACIONES}`);
+  await c.query(`
+    INSERT INTO core.vacaciones_saldo_inicial (empleado_id, anio, dias, dias_duplicados_legado)
+    SELECT x.id, ${ANIO_VACACIONES}, 0, x.n FROM jsonb_to_recordset($1::jsonb) AS x(id text, n int)
+    WHERE EXISTS (SELECT 1 FROM core.empleados e WHERE e.id = x.id)
+    ON CONFLICT (empleado_id, anio) DO UPDATE SET dias_duplicados_legado = EXCLUDED.dias_duplicados_legado`, [J(dup)]);
+  reporte.vacaciones_duplicadas = (await c.query(`
+    SELECT x.id AS empleado_id, e.nombre, e.activo, x.n AS filas_repetidas, x.fechas
+    FROM jsonb_to_recordset($1::jsonb) AS x(id text, n int, fechas jsonb)
+    LEFT JOIN core.empleados e ON e.id = x.id ORDER BY x.n DESC, x.id`, [J(dup)])).rows;
+  paso('vacaciones_filas_repetidas', { empleados: dup.length, filas: dup.reduce((s, d) => s + d.n, 0) });
+
   // 10) Dispositivos: el último usado queda activo (R-22)
   const disp = await c.query(`
     INSERT INTO core.dispositivos (token, empleado_id, activo, registrado_en, ultimo_uso)
@@ -600,9 +623,14 @@ try {
       const hojaPorId = {};
       for (const v of hojaVacaciones) if (/^VACACIONES$/.test(v.tipo || '') && v.fecha <= enGuayaquil(new Date()).fecha)
         hojaPorId[v.empleado_id] = (hojaPorId[v.empleado_id] || 0) + 1;
+      // Mismo cálculo que api.vacaciones_saldo.tomadas (días distintos + ajuste de filas repetidas)
       const base = Object.fromEntries((await q(`
-        SELECT empleado_id, count(*)::int n FROM core.novedades WHERE tipo = 'VACACIONES' AND fecha <= private.hoy() GROUP BY 1`))
-        .map(r => [r.empleado_id, r.n]));
+        SELECT e.id empleado_id,
+               ((SELECT count(*) FROM core.novedades n WHERE n.empleado_id = e.id AND n.tipo = 'VACACIONES'
+                  AND n.fecha <= private.hoy()) + coalesce(s.dias_duplicados_legado, 0))::int n
+        FROM core.empleados e
+        LEFT JOIN core.vacaciones_saldo_inicial s ON s.empleado_id = e.id AND s.anio = ${ANIO_VACACIONES}`))
+        .filter(r => r.n > 0).map(r => [r.empleado_id, r.n]));
       const ids = new Set([...Object.keys(hojaPorId), ...Object.keys(base)]);
       const difs = [...ids].filter(id => (hojaPorId[id] || 0) !== (base[id] || 0))
         .map(id => ({ empleado_id: id, hoja: hojaPorId[id] || 0, base_nueva: base[id] || 0 }));
@@ -611,17 +639,18 @@ try {
     // Regla SQL de adjudicadas y total contra lo que calculó la hoja (D-04)
     saldo_vs_hoja: await (async () => {
       const nuevos = Object.fromEntries((await q(`
-        SELECT e.id, private.vacaciones_adjudicadas(e.fecha_ingreso, ${ANIO_VACACIONES}) adj,
-               coalesce(s.dias, 0) + coalesce(private.vacaciones_adjudicadas(e.fecha_ingreso, ${ANIO_VACACIONES}), 0) total
-        FROM core.empleados e LEFT JOIN core.vacaciones_saldo_inicial s ON s.empleado_id = e.id AND s.anio = ${ANIO_VACACIONES}`))
+        SELECT empleado_id AS id, adjudicadas adj, total, tomadas, restantes FROM api.vacaciones_saldo`))
         .map(r => [r.id, r]));
       const difs = [];
       let comparados = 0;
       for (const [id, h] of hojaVacCalc) {
         if (h.adjudicadas === null || !nuevos[id]) continue;
         comparados++;
-        if (Number(nuevos[id].adj) !== h.adjudicadas || (h.total !== null && Number(nuevos[id].total) !== h.total))
-          difs.push({ empleado_id: id, hoja_adj: h.adjudicadas, nueva_adj: nuevos[id].adj, hoja_total: h.total, nueva_total: Number(nuevos[id].total) });
+        const n = nuevos[id];
+        if (Number(n.adj) !== h.adjudicadas || (h.total !== null && Number(n.total) !== h.total) ||
+            (h.tomadas !== null && Number(n.tomadas) !== h.tomadas) || (h.restantes !== null && Number(n.restantes) !== h.restantes))
+          difs.push({ empleado_id: id, hoja_adj: h.adjudicadas, nueva_adj: n.adj, hoja_total: h.total, nueva_total: Number(n.total),
+                      hoja_tomadas: h.tomadas, nueva_tomadas: Number(n.tomadas), hoja_restantes: h.restantes, nueva_restantes: Number(n.restantes) });
       }
       return { comparados, con_diferencia: difs.length, diferencias: difs };
     })(),
@@ -660,9 +689,11 @@ const md = [
   '## Vacaciones tomadas: hoja vs. base nueva', '',
   `Empleados comparados: ${reporte.conciliacion.vacaciones_vs_hoja.empleados_comparados} · con diferencia: ${reporte.conciliacion.vacaciones_vs_hoja.con_diferencia}`, '',
   ...reporte.conciliacion.vacaciones_vs_hoja.diferencias.map(d => `- ${d.empleado_id}: hoja ${d.hoja} · nueva ${d.base_nueva}`), '',
-  '## Adjudicadas y total 2026: hoja CALCULAR_vacaciones vs. regla SQL', '',
+  '## Vacaciones: filas repetidas en la hoja (P-10, se replican como ajuste)', '',
+  ...(reporte.vacaciones_duplicadas || []).map(d => `- ${d.empleado_id} ${d.nombre ?? ''}${d.activo === false ? ' (inactivo)' : ''}: ${d.filas_repetidas} fila(s) repetida(s) → ${d.fechas.join(', ')}`), '',
+  '## Saldo 2026: hoja CALCULAR_vacaciones (valores al descargarla) vs. api.vacaciones_saldo', '',
   `Comparados: ${reporte.conciliacion.saldo_vs_hoja.comparados} · con diferencia: ${reporte.conciliacion.saldo_vs_hoja.con_diferencia}`, '',
-  ...reporte.conciliacion.saldo_vs_hoja.diferencias.map(d => `- ${d.empleado_id}: adjudicadas hoja ${d.hoja_adj} / nueva ${d.nueva_adj} · total hoja ${d.hoja_total} / nueva ${d.nueva_total}`), '',
+  ...reporte.conciliacion.saldo_vs_hoja.diferencias.map(d => `- ${d.empleado_id}: adjudicadas ${d.hoja_adj}/${d.nueva_adj} · total ${d.hoja_total}/${d.nueva_total} · tomadas ${d.hoja_tomadas}/${d.nueva_tomadas} · restantes ${d.hoja_restantes}/${d.nueva_restantes} (hoja/nueva)`), '',
   '## Hojas vs. base (filas agregadas desde el libro)', '',
   '| Fuente | Tipo | Mes | Filas | Mismo día y tipo en base | Empleado sin registros en base |', '|---|---|---|---|---|---|',
   ...reporte.pasos.hojas_vs_base.map(h => `| ${h.fuente} | ${h.tipo} | ${h.mes} | ${h.filas} | ${h.mismo_dia_tipo_en_base} | ${h.empleado_sin_registros_en_base} |`),

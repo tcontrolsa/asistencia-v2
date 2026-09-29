@@ -14,7 +14,9 @@
     "db:clonar-dev": "node db/scripts/clonar-dev.js",
     "db:migrate": "node db/scripts/migrate.js",
     "db:etl": "node db/etl/etl.js",
-    "db:test": "node db/scripts/test.js"
+    "db:test": "node db/scripts/test.js",
+    "db:secretos": "node db/scripts/generar-secretos.js",
+    "db:probar-http": "node db/scripts/probar-http.js"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

@@ -12,6 +12,7 @@ services:
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-api}
       PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE:-anon}
       PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      PGRST_DB_PRE_REQUEST: private.verificar_sesion   # revoca sesiones (dispositivo, cambio de contraseña, rol)
       PGRST_DB_MAX_ROWS: "5000"
       PGRST_OPENAPI_MODE: "follow-privileges"   # anon solo ve en /  lo que puede usar
       PGRST_LOG_LEVEL: "warn"

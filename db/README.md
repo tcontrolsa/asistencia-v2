@@ -23,7 +23,9 @@ node db/scripts/migrate.js               # aplica db/migrations/*.sql pendientes
 node db/scripts/migrate.js --reset       # (solo dev) borra api/core/private y vuelve a migrar
 node db/etl/etl.js                       # public.* + CONTROL_ASISTENCIA_2026.xlsx → core.*  (idempotente)
 node db/etl/etl.js --simular             # igual, pero revierte al final
-node db/scripts/test.js                  # pruebas de reglas y permisos (dentro de BEGIN…ROLLBACK)
+node db/scripts/test.js                  # pruebas de reglas, permisos y autenticación (dentro de BEGIN…ROLLBACK)
+node db/scripts/generar-secretos.js      # completa en .env la clave de authenticator y el secreto JWT (sin mostrarlos)
+node db/scripts/probar-http.js --url http://192.168.10.129:3001   # prueba de humo contra PostgREST levantado
 ```
 
 El reporte de conciliación queda en `db/etl/reportes/` (no versionado: contiene IDs de empleados).
@@ -50,9 +52,23 @@ Horarios, cortes y coordenadas viven en `core.horarios` y `core.configuracion`; 
 `db/postgrest/docker-compose.yml` levanta PostgREST 12 en el puerto 3001, al lado del Express. Requiere en `.env`:
 `PGRST_AUTHENTICATOR_PASSWORD`, `PGRST_DB_URI` (usuario `authenticator`), `PGRST_JWT_SECRET`. El login que emite el JWT es de la Fase 2.
 
+## Autenticación (007_autenticacion.sql, Fase 2)
+
+| RPC | Quién | Qué hace |
+|---|---|---|
+| `api.login(p_usuario, p_password, p_dispositivo?)` | anon | bcrypt; 5 fallos → bloqueo 15 min (HTTP 429); sin contraseña → `CREAR_PASSWORD` (403); vincula el dispositivo |
+| `api.crear_password(p_usuario, p_cedula, p_password, p_dispositivo?)` | anon | Primer ingreso (D-06): exige la cédula registrada; mínimo 6 (8 para supervisor/admin/guardia) |
+| `api.cambiar_password(p_actual, p_nueva)` | sesión | Cambia y devuelve sesión nueva; invalida las anteriores |
+| `api.resetear_password(p_empleado_id, p_password_temporal?)` | supervisor+ | Sin temporal: el colaborador vuelve a crearla con su cédula. Con temporal: debe cambiarla al ingresar. No sobre roles iguales o superiores (salvo admin) |
+| `api.resetear_passwords_todos()` | admin | Reseteo masivo |
+| `api.guardar_guardia(p_usuario, p_nombre, p_activo, p_password?)` | supervisor_admin+ | Cuentas individuales de guardia (D-14) |
+| `api.mi_sesion()` | sesión | Datos de la sesión actual |
+
+El JWT (HS256) lo firma la base con `private.secretos.jwt_secret` = `PGRST_JWT_SECRET`. Claims: `role`, `usuario`, `empleado_id`, `rol_app`, `dispositivo`, `debe_cambiar`, `iat`, `exp` (empleado y guardia 30 días, supervisor/admin 12 h; en `core.configuracion.auth`).
+`private.verificar_sesion()` corre antes de cada petición (`PGRST_DB_PRE_REQUEST`) y rechaza con 401 si la cuenta se desactivó, cambió de rol, cambió o se reseteó la contraseña, o si se vinculó otro dispositivo; con 403 si debe cambiar la contraseña.
+
 ## Pendiente para fases siguientes
 
-- Fase 2: `api.login` (bcrypt + JWT + bloqueo 5 fallos/15 min), creación y cambio de contraseña, vinculación de dispositivo.
 - Fase 3–5: RPC de escritura (`marcar`, reporte fuera de área, justificaciones, solicitudes, gestión de jornada) usando las funciones de `private`.
 - Cálculos de jornada neta, bolsa de 4 h y "Por Regularizar" (R-08 a R-11) junto con los reportes de la Fase 5.
 - Tareas programadas (autocompletar salidas, avisos WhatsApp): la imagen actual no tiene `pg_cron`; irán en el worker.

@@ -43,5 +43,12 @@ if (process.env.PGRST_AUTHENTICATOR_PASSWORD) {
   await c.query(`ALTER ROLE authenticator PASSWORD ${rows[0].p}`);
   log('Contraseña de authenticator actualizada.');
 }
+// Secreto con el que la base firma los JWT; debe ser el mismo PGRST_JWT_SECRET de PostgREST.
+if (process.env.PGRST_JWT_SECRET) {
+  if (process.env.PGRST_JWT_SECRET.length < 32) throw new Error('PGRST_JWT_SECRET debe tener al menos 32 caracteres');
+  await c.query(`INSERT INTO private.secretos (clave, valor) VALUES ('jwt_secret', $1)
+                 ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`, [process.env.PGRST_JWT_SECRET]);
+  log('Secreto JWT actualizado.');
+}
 await c.end();
 log('Migraciones al día.');
