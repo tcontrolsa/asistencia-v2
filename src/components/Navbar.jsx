@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, ShieldCheck, Users, BarChart3, Utensils, Shield, CheckCircle2, AlertCircle, Settings, X, Wifi, AlertTriangle, IdCard } from 'lucide-react';
 import { executeAction, getApiBase } from '../services/api';
 
-export default function Navbar({ activeTab, setActiveTab }) {
+export default function Navbar({ currentActor }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [dbStatus, setDbStatus] = useState('checking');
   const [showConfig, setShowConfig] = useState(false);
@@ -96,40 +96,33 @@ export default function Navbar({ activeTab, setActiveTab }) {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="navbar-tabs">
-          <button
-            onClick={() => setActiveTab('asistencia')}
-            className={`nav-tab ${activeTab === 'asistencia' ? 'active' : ''}`}
-          >
-            <IdCard size={18} />
-            <span>Mi Asistencia</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('supervisor')}
-            className={`nav-tab ${activeTab === 'supervisor' ? 'active' : ''}`}
-          >
-            <BarChart3 size={18} />
-            <span>Supervisor</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('guardia')}
-            className={`nav-tab ${activeTab === 'guardia' ? 'active' : ''}`}
-          >
-            <Shield size={18} />
-            <span>Guardia</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('catering')}
-            className={`nav-tab ${activeTab === 'catering' ? 'active' : ''}`}
-          >
-            <Utensils size={18} />
-            <span>Catering</span>
-          </button>
-        </nav>
+        {/* Module Title Badge (Isolated, No Public Actor Tabs) */}
+        <div className="navbar-actor-badge">
+          {currentActor === 'supervisor' && (
+            <div className="actor-pill purple">
+              <BarChart3 size={17} />
+              <span>Panel de Supervisor</span>
+            </div>
+          )}
+          {currentActor === 'guardia' && (
+            <div className="actor-pill green">
+              <Shield size={17} />
+              <span>Terminal de Guardia</span>
+            </div>
+          )}
+          {currentActor === 'catering' && (
+            <div className="actor-pill amber">
+              <Utensils size={17} />
+              <span>Servicio de Catering</span>
+            </div>
+          )}
+          {(currentActor === 'asistencia' || !currentActor) && (
+            <div className="actor-pill blue">
+              <IdCard size={17} />
+              <span>Portal del Colaborador</span>
+            </div>
+          )}
+        </div>
 
         {/* Live Clock, DB Status & Settings */}
         <div className="navbar-meta">
@@ -305,36 +298,39 @@ export default function Navbar({ activeTab, setActiveTab }) {
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
-        .navbar-tabs {
+        .navbar-actor-badge {
           display: flex;
           align-items: center;
-          background: rgba(255, 255, 255, 0.04);
-          padding: 4px;
-          border-radius: var(--radius-full);
-          border: 1px solid var(--border-color);
         }
-        .nav-tab {
+        .actor-pill {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 8px 18px;
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          font-size: 0.88rem;
-          font-weight: 600;
+          padding: 7px 16px;
           border-radius: var(--radius-full);
-          cursor: pointer;
-          transition: all 0.2s ease;
+          font-size: 0.85rem;
+          font-weight: 700;
+          letter-spacing: 0.3px;
         }
-        .nav-tab:hover {
-          color: var(--text-main);
-          background: rgba(255, 255, 255, 0.05);
+        .actor-pill.blue {
+          background: rgba(59, 130, 246, 0.15);
+          color: #60a5fa;
+          border: 1px solid rgba(59, 130, 246, 0.35);
         }
-        .nav-tab.active {
-          color: white;
-          background: var(--primary);
-          box-shadow: 0 2px 10px var(--primary-glow);
+        .actor-pill.purple {
+          background: rgba(168, 85, 247, 0.15);
+          color: #c084fc;
+          border: 1px solid rgba(168, 85, 247, 0.35);
+        }
+        .actor-pill.green {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+          border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .actor-pill.amber {
+          background: rgba(245, 158, 11, 0.15);
+          color: #fbbf24;
+          border: 1px solid rgba(245, 158, 11, 0.35);
         }
         .navbar-meta {
           display: flex;

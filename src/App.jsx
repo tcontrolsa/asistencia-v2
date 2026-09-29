@@ -4,22 +4,45 @@ import MiAsistenciaPage from './pages/MiAsistenciaPage';
 import SupervisorPage from './pages/SupervisorPage';
 import GuardiaPage from './pages/GuardiaPage';
 import CateringPage from './pages/CateringPage';
-import { Database, ShieldCheck, Heart } from 'lucide-react';
+import { Database } from 'lucide-react';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('asistencia');
+function getActor(initial) {
+  if (initial) return initial;
+  if (typeof window === 'undefined') return 'asistencia';
+  
+  const path = window.location.pathname.toLowerCase();
+  if (path.includes('supervisor')) return 'supervisor';
+  if (path.includes('guardia')) return 'guardia';
+  if (path.includes('catering')) return 'catering';
+
+  const hash = window.location.hash.toLowerCase();
+  if (hash.includes('supervisor')) return 'supervisor';
+  if (hash.includes('guardia')) return 'guardia';
+  if (hash.includes('catering')) return 'catering';
+
+  const params = new URLSearchParams(window.location.search);
+  const p = params.get('page') || params.get('actor');
+  if (p && ['supervisor', 'guardia', 'catering', 'asistencia'].includes(p.toLowerCase())) {
+    return p.toLowerCase();
+  }
+
+  return 'asistencia';
+}
+
+export default function App({ initialActor }) {
+  const [actor] = useState(() => getActor(initialActor));
 
   return (
     <div className="app-root">
-      {/* Top Navbar */}
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Top Navbar: Specific to the active actor */}
+      <Navbar currentActor={actor} />
 
-      {/* Main Content View */}
+      {/* Main Content View: Exclusively renders only the actor's page */}
       <main className="app-main">
-        {activeTab === 'asistencia' && <MiAsistenciaPage />}
-        {activeTab === 'supervisor' && <SupervisorPage />}
-        {activeTab === 'guardia' && <GuardiaPage />}
-        {activeTab === 'catering' && <CateringPage />}
+        {actor === 'asistencia' && <MiAsistenciaPage />}
+        {actor === 'supervisor' && <SupervisorPage />}
+        {actor === 'guardia' && <GuardiaPage />}
+        {actor === 'catering' && <CateringPage />}
       </main>
 
       {/* Footer */}
@@ -28,7 +51,11 @@ export default function App() {
           <div className="footer-left">
             <span className="footer-brand">T-Control S.A.</span>
             <span className="footer-separator">•</span>
-            <span className="footer-desc">Sistema de Asistencia 2.0 (PostgreSQL Docker)</span>
+            <span className="footer-desc">
+              {actor === 'asistencia' ? 'Portal del Colaborador' :
+               actor === 'supervisor' ? 'Panel de Supervisión' :
+               actor === 'guardia' ? 'Terminal de Garita' : 'Servicio de Comedor'}
+            </span>
           </div>
 
           <div className="footer-right">
