@@ -149,3 +149,14 @@ Preguntas abiertas: ver P-03 y P-04.
 | P-14 | Motivo de entrada tardía (D-01): en el legado la pantalla existía pero nunca se mostraba; se activa | `api.marcar` exige motivo si la primera ENTRADA del día pasa del límite (07:45) |
 | D-07 | Confirmado: el empleado ya no fija su base de campo | La app muestra "Proyecto asignado por supervisor" |
 | P-15 | Aviso legal LOPDP, cláusula 2: hablaba de "fotografía / selfie" biométrica que no existe; se ajusta | Nueva cláusula "Fotografía de Perfil (Sin Captura Biométrica)" |
+
+## 10. Fase 4 — terminales (2026-09-30)
+
+| Tema | Legado | Nuevo |
+|---|---|---|
+| Acceso guardia | Clave compartida `TCONTROL2026` escrita en el JS | Usuario y contraseña por guardia (D-14); contraseña temporal que se cambia al primer ingreso |
+| R-14 en guardia | La guardia guardaba "En planta" a cualquier hora | El servidor aplica R-14 igual que en la app; el aviso de éxito indica cuando el almuerzo quedó fuera de planta |
+| Salida anticipada | Advertencia con la hora del teléfono | Misma advertencia (16:15) con la hora del servidor |
+| Acceso catering | ID + PIN de 4 dígitos | ID + contraseña del supervisor; sin vincular dispositivo |
+| Kiosco | No existía | Nuevo (D-23), sin cámara, con la contraseña del colaborador (P-02), estilo de la terminal de guardia |
+| Actualización forzada remota | `forzar_actualizacion_ts` en Firestore cada 15 min | Service worker con `autoUpdate` y comprobación cada 15 min (igual que la app) |

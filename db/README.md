@@ -81,8 +81,21 @@ Pruebas por hora con reloj simulado: `private.ahora_local()` respeta `app.ahora`
 
 Desarrollo sin Docker: `node db/scripts/pgrst-dev.js` emula lo que la app usa de PostgREST (solo desarrollo).
 
+## Guardia, catering y kiosco (009_guardia_catering_kiosco.sql, Fase 4)
+
+`private.marcar_asistido` aplica las mismas reglas que `api.marcar` a una marcación hecha por un tercero: activo,
+SIN_ASISTENCIA, tipo que corresponde (ENTRADA → SALIDA → jornada completada), geocerca con el GPS del terminal,
+almuerzo obligatorio en la ENTRADA y R-14 (después de las 09:30 el almuerzo queda fuera de planta; el legado no lo
+aplicaba en la guardia).
+
+- Guardia: `api.guardia_buscar`, `api.marcar_guardia` (origen y dispositivo `GUARDIA`, `creado_por` = usuario del guardia), `api.presentes_hoy`.
+- Catering (supervisor): `api.lista_catering`, `api.marcar_consumido` (una vez por día, con quien lo registró).
+- Kiosco (anon, con la contraseña del colaborador): `api.kiosco_identificar`, `api.marcar_kiosco` (origen `KIOSCO`); los fallos cuentan para el bloqueo.
+
+Cuentas de prueba de desarrollo: `db/seeds/dev_prueba_terminales.sql`.
+
 ## Pendiente para fases siguientes
 
-- Fase 4–5: kiosco, guardia, catering y supervisor (RPC de escritura de gestión de jornada).
+- Fase 5: supervisor (RPC de escritura de gestión de jornada).
 - Cálculos de jornada neta, bolsa de 4 h y "Por Regularizar" (R-08 a R-11) junto con los reportes de la Fase 5.
 - Tareas programadas (autocompletar salidas, avisos WhatsApp): la imagen actual no tiene `pg_cron`; irán en el worker.

@@ -42,6 +42,17 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    // Una página por actor, como el legado (index, guardia, catering) + kiosco (D-23)
+    build: {
+      rollupOptions: {
+        input: {
+          index: 'index.html',
+          guardia: 'guardia.html',
+          catering: 'catering.html',
+          kiosco: 'kiosco.html',
+        },
+      },
+    },
     server: {
       host: true,
       port: 5180,

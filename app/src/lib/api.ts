@@ -1,6 +1,8 @@
 // Cliente de PostgREST. Sin secretos: la sesión es un JWT firmado por la base (Fase 2).
 const BASE = ((import.meta.env.VITE_POSTGREST_URL as string | undefined) || './rest').replace(/\/$/, '');
-const CLAVE_TOKEN = 'TCONTROL_SESION';
+// Cada módulo (empleado, guardia, catering) guarda su propia sesión en el dispositivo
+let CLAVE_TOKEN = 'TCONTROL_SESION';
+export function usarClaveSesion(clave: string) { CLAVE_TOKEN = clave; }
 
 export class ErrorApi extends Error {
   constructor(message: string, public codigo?: string, public hint?: string, public estado?: number, public datos?: unknown) {
