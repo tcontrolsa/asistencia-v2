@@ -1,7 +1,7 @@
 // Contenedor de paneles (.panel / .panel.active del legado)
 import { ReactNode } from 'react';
 import { s } from '../../lib/estilo';
-import { cambiarSubtabAsistencia, cambiarSubtabServicios } from '../nav';
+import { cambiarSubtabAsistencia } from '../nav';
 import { useSup } from '../store';
 import { ControlDiario } from './ControlDiario';
 import { Dashboard } from './Dashboard';
@@ -9,6 +9,7 @@ import { PanelDetalle } from './Detalle';
 import { Directorio } from './Directorio';
 import { Mapa } from './Mapa';
 import { Reportes } from './Reportes';
+import { PanelServicios } from './Servicios';
 
 function PanelBase({ id, activo, children }: { id: string; activo: boolean; children: ReactNode }) {
   return <div id={`panel-${id}`} className={`panel${activo ? ' active' : ''}`}>{activo ? children : null}</div>;
@@ -50,26 +51,6 @@ function PanelAsistencia() {
       {sub === 'control' && <ControlDiario />}
       {sub === 'directorio' && <Directorio />}
       {sub === 'mapa' && <Mapa />}
-    </>
-  );
-}
-
-function PanelServicios() {
-  const sub = useSup(x => x.subtabServicios);
-  const boton = (id: 'emergencias' | 'menu' | 'cultura' | 'invitados', icono: string, color: string, texto: string) => (
-    <button type="button" className={`btn-subtab${sub === id ? ' active' : ''}`} id={`subtab-btn-serv-${id}`} onClick={() => cambiarSubtabServicios(id)}>
-      <i className={icono} style={{ color }}></i> {texto}
-    </button>
-  );
-  return (
-    <>
-      <div className="subtabs-header-bar" id="subtabsBarServicios">
-        {boton('emergencias', 'fas fa-exclamation-triangle', 'var(--red)', 'Emergencias')}
-        {boton('menu', 'fas fa-utensils', 'var(--amber)', 'Menú Semanal')}
-        {boton('cultura', 'fas fa-lightbulb', 'var(--purple)', 'Cultura Tcontrol')}
-        {boton('invitados', 'fas fa-user-friends', 'var(--blue)', 'Invitados & Catering')}
-      </div>
-      <Pendiente texto={sub} />
     </>
   );
 }

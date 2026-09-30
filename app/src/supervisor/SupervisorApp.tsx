@@ -10,6 +10,7 @@ import { buscarEmpleado, cargarDatosCompletos, idSesion, rolSesion, sup, useSup 
 import { Avisos, fotoDe, mostrarToast } from './ui/comun';
 import { Paneles } from './ui/Paneles';
 import { ModalesSupervisor } from './ui/ModalesSupervisor';
+import { badgeInvitados, notificarManualSupAdminsWhatsApp, pendientesInvitados, subtipoLabel } from './ui/Servicios';
 import { ModalesDesglose } from './ui/Desgloses';
 
 export function SupervisorApp() {
@@ -304,14 +305,10 @@ function Panel() {
   );
 }
 
-function pendientesInvitados() {
-  return (sup.get().solicitudesInvitados || []).filter((x: { estado?: string }) => (x.estado || 'SOLICITADO') === 'SOLICITADO').length;
-}
-
 function BadgeInvitados() {
   useSup(x => x.version);
-  const n = pendientesInvitados();
-  return <span id="badgeInvitadosCount" style={{ display: n > 0 ? 'inline-block' : 'none', marginLeft: 'auto', background: '#dc2626', color: 'white', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10 }}>{n}</span>;
+  const b = badgeInvitados();
+  return <span id="badgeInvitadosCount" title={b?.title || ''} style={{ display: b ? 'inline-block' : 'none', marginLeft: 'auto', background: b?.color || '#dc2626', color: 'white', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10 }}>{b?.n || 0}</span>;
 }
 
 // Aviso a Supervisores Admin de solicitudes de invitados pendientes (actualizarNotificacionesSupAdminInvitados)
@@ -319,8 +316,10 @@ function BannerInvitadosSupAdmin() {
   useSup(x => x.version);
   const [cerrado, setCerrado] = useState(false);
   const rol = rolSesion();
-  const n = pendientesInvitados();
+  const pend = pendientesInvitados();
+  const n = pend.length;
   if (cerrado || n === 0 || (rol !== 'SUPERVISOR_ADMIN' && rol !== 'ADMIN_MASTER')) return null;
+  const primer = pend[0];
   return (
     <div id="bannerAlertaSupAdminInvitados" style={s('display:flex; margin: 10px 0 16px 0; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1.5px solid #fb923c; border-left: 6px solid #ea580c; border-radius: 12px; padding: 12px 18px; box-shadow: 0 4px 12px rgba(234,88,12,0.10); align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;')}>
       <div style={s('display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;')}>
@@ -330,10 +329,10 @@ function BannerInvitadosSupAdmin() {
         <div>
           <div style={s('font-size: 13.5px; font-weight: 800; color: #9a3412; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;')}>
             <span>¡Atención Sup. Admin! Solicitudes de invitados pendientes</span>
-            <span id="badgeSupAdminCountInvitados" style={s('background:#ea580c; color:white; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;')}>{n} pendientes</span>
+            <span id="badgeSupAdminCountInvitados" style={s('background:#ea580c; color:white; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;')}>{n} pendiente{n > 1 ? 's' : ''}</span>
           </div>
           <div id="textoSupAdminAlertaInvitados" style={s('font-size: 12px; color: #7c2d12; margin-top: 3px; line-height: 1.35;')}>
-            Hay solicitudes de refrigerios o almuerzos extra registradas que requieren tu revisión o coordinación.
+            Hay <strong>{n} solicitud(es) de refrigerios / almuerzos para invitados</strong> pendientes de revisión. Más reciente: <em>{primer.solicitante} ({primer.cantidad}x {subtipoLabel(primer.subtipo)} para el {primer.fecha || 'Hoy'})</em>.
           </div>
         </div>
       </div>
@@ -341,6 +340,10 @@ function BannerInvitadosSupAdmin() {
         <button type="button" className="btn" onClick={() => cambiarPanel('invitados')}
           style={s('background: #ea580c; color: white; border: none; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(234,88,12,0.25);')}>
           <i className="fas fa-utensils"></i> Revisar Solicitudes
+        </button>
+        <button type="button" className="btn" onClick={() => void notificarManualSupAdminsWhatsApp()} title="Enviar recordatorio WhatsApp a todos los Sup. Admin"
+          style={s('background: #25d366; color: white; border: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(37,211,102,0.25);')}>
+          <i className="fab fa-whatsapp"></i> Notificar a Sup. Admin
         </button>
         <button type="button" onClick={() => setCerrado(true)} style={s('background: transparent; border: none; color: #9a3412; cursor: pointer; font-size: 16px; padding: 4px; margin-left: 4px;')} title="Cerrar aviso">
           <i className="fas fa-times"></i>

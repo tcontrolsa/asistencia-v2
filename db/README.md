@@ -103,6 +103,9 @@ Lectura con la forma de registro del legado (D-24, `private.registros_legado`):
   `api.sup_solicitudes_invitados(desde, hasta)` traen rangos anteriores (reportes, anual, histórico).
 - Escritura (010–012): almuerzo, ausencias, gestión de jornada, permisos, edición de horas, registro manual, eventos
   futuros, trabajo en campo, solicitudes de invitados, ficha y alta de colaboradores, foto.
+- Gestión & Servicios (014): `api.sup_emergencia_estado`, `api.cambiar_emergencia`, `api.sup_menu` / `api.sup_guardar_menu`,
+  `api.sup_cultura` / `api.sup_guardar_cultura` / `api.sup_cultura_global`, `api.sup_estado_invitado`,
+  `api.sup_eliminar_invitado`, `api.sup_notificar_invitados` (avisos de WhatsApp en `core.cola_notificaciones`).
 - Los cálculos (jornada neta, bolsa de 4 h, por regularizar, KPIs, reportes) se hacen en el navegador con el motor
   portado del legado; `node app/scripts/paridad-supervisor.mjs` compara sus números contra los datos del legado.
 

@@ -197,3 +197,7 @@ prueba y una hora cruda anómala (1058, 29/09).
 | PDF de KPIs | html2pdf desde CDN | html2pdf.js 0.14 (sin la vulnerabilidad de jspdf ≤ 4.2.0) cargado bajo demanda; fuera del precache del PWA |
 | Modales "Justificar" y "Desglose de inasistencias" | Código presente pero inalcanzable (sus contenedores no existen en `supervisor.html`) | No se migran |
 | WhatsApp desde el panel | Envío por OpenWA con la llave en el navegador | Temporalmente `wa.me` hasta el bloque de WhatsApp (la llave queda en el servidor) |
+| Avisos a Sup. Admin de invitados (recordatorio y cancelación) | OpenWA desde el navegador | `core.cola_notificaciones` (`RECORDATORIO_INVITADOS`, `CANCELACION_INVITADO`); los envía el worker de la Fase 6 |
+| Menú semanal | Firestore + archivo del anterior en la hoja `HISTORIAL_MENU` desde el navegador | `api.sup_guardar_menu` archiva y publica en una sola transacción; sugerencias desde `core.historial_menu` |
+| Cultura Tcontrol | Banco en Firestore/Sheets; interruptor general guardado también en `localStorage` | `api.sup_guardar_cultura` (reemplaza el banco, valida ≥ 2 opciones) y `api.sup_cultura_global` (`core.configuracion.cultura`) |
+| Pedidos de invitados cancelados | `obtenerListaConsolidadaInvitados` los omite (el filtro "Cancelado" no muestra filas) | Se conserva el comportamiento |
