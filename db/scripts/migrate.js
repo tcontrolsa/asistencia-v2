@@ -1,5 +1,5 @@
 // Aplica db/migrations/*.sql en orden, una vez cada una, dentro de una transacción.
-// Uso: node db/scripts/migrate.js [--db nombre] [--produccion] [--reset (solo desarrollo)]
+// Uso: node db/scripts/migrate.js [--db nombre] [--produccion] [--reset | --rehacer 010 (solo desarrollo)]
 import fs from 'node:fs';
 import path from 'node:path';
 import { RAIZ, baseDestino, conectar, log } from './lib.js';
@@ -19,6 +19,16 @@ await c.query(`CREATE SCHEMA IF NOT EXISTS private;
                CREATE TABLE IF NOT EXISTS private.schema_migrations (
                  version text PRIMARY KEY, aplicada_en timestamptz NOT NULL DEFAULT now())`);
 const aplicadas = new Set((await c.query('SELECT version FROM private.schema_migrations')).rows.map(r => r.version));
+// --rehacer <archivo>: vuelve a ejecutar una migración ya aplicada mientras se desarrolla (solo desarrollo)
+const iRehacer = process.argv.indexOf('--rehacer');
+if (iRehacer > 0) {
+  if (process.argv.includes('--produccion')) throw new Error('--rehacer no está permitido en producción');
+  const objetivo = archivos.find(f => f.startsWith(process.argv[iRehacer + 1] || '¬'));
+  if (!objetivo) throw new Error('Migración no encontrada para --rehacer');
+  await c.query('DELETE FROM private.schema_migrations WHERE version = $1', [objetivo]);
+  aplicadas.delete(objetivo);
+  log(`Se volverá a aplicar ${objetivo} (--rehacer).`);
+}
 
 for (const f of archivos) {
   if (aplicadas.has(f)) continue;

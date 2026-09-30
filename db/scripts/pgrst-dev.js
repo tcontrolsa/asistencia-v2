@@ -71,7 +71,9 @@ async function ejecutar(req, url, cuerpo) {
       if (!info) throw { code: '42883', message: `Función api.${nombre} no existe` };
       const args = req.method === 'GET' ? Object.fromEntries(url.searchParams) : (cuerpo || {});
       const claves = Object.keys(args);
-      const valores = claves.map(k => (args[k] !== null && typeof args[k] === 'object' && !Array.isArray(args[k]) ? JSON.stringify(args[k]) : args[k]));
+      // Objetos y listas de objetos van como JSON (jsonb); listas de valores simples, como arreglos de PostgreSQL
+      const esJson = v => v !== null && typeof v === 'object' && (!Array.isArray(v) || v.some(x => x !== null && typeof x === 'object'));
+      const valores = claves.map(k => (esJson(args[k]) ? JSON.stringify(args[k]) : args[k]));
       const llamada = `api.${ident(nombre)}(${claves.map((k, i) => `${ident(k)} => $${i + 1}`).join(', ')})`;
       const compuesto = info.typtype === 'c' || info.tipo === 'record';
       if (info.typname === 'image/jpeg') {

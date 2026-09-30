@@ -32,3 +32,4 @@ dist-ssr
 *.csv
 db/etl/reportes/
 *.tsbuildinfo
+app/scripts/.paridad-motor.mjs

@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
           guardia: 'guardia.html',
           catering: 'catering.html',
           kiosco: 'kiosco.html',
+          supervisor: 'supervisor.html',
         },
       },
     },
