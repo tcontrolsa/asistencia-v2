@@ -5,6 +5,8 @@ import { cambiarSubtabAsistencia, cambiarSubtabServicios } from '../nav';
 import { useSup } from '../store';
 import { ControlDiario } from './ControlDiario';
 import { PanelDetalle } from './Detalle';
+import { Directorio } from './Directorio';
+import { Mapa } from './Mapa';
 
 function PanelBase({ id, activo, children }: { id: string; activo: boolean; children: ReactNode }) {
   return <div id={`panel-${id}`} className={`panel${activo ? ' active' : ''}`}>{activo ? children : null}</div>;
@@ -44,8 +46,8 @@ function PanelAsistencia() {
         {boton('mapa', 'fas fa-map-marked-alt', 'var(--red)', 'Mapa de Asistencia')}
       </div>
       {sub === 'control' && <ControlDiario />}
-      {sub === 'directorio' && <Pendiente texto="Directorio" />}
-      {sub === 'mapa' && <Pendiente texto="Mapa de Asistencia" />}
+      {sub === 'directorio' && <Directorio />}
+      {sub === 'mapa' && <Mapa />}
     </>
   );
 }

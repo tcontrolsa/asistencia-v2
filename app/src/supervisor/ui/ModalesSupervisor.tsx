@@ -10,6 +10,7 @@ import { cerrarModal, mostrarDetalle, useModal } from '../nav';
 import { mostrarLoader, sup, tienePermisoAdmin, useSup } from '../store';
 import { errorTexto, mostrarToast } from './comun';
 import { ModalJornada } from './ModalJornada';
+import { ModalEditarEmpleado, ModalNuevoEmpleado } from './ModalesFicha';
 
 export function ModalesSupervisor() {
   const jornada = useModal<{ id: string; fecha: string }>('jornada');
@@ -18,12 +19,16 @@ export function ModalesSupervisor() {
   const campo = useModal<{ id?: string }>('campo');
   const extra = useModal('extraLunch');
   const wa = useModal<{ id: string; mensaje?: string }>('waIndividual');
+  const editarEmp = useModal<{ id: string }>('editarEmp');
+  const nuevoEmp = useModal('nuevoEmp');
   return (
     <>
       {manual && <ModalManual datos={manual} />}
       {futuro && <ModalFuturo datos={futuro} />}
       {campo && <ModalCampo datos={campo} />}
       {extra && <ModalExtraLunch />}
+      {editarEmp && <ModalEditarEmpleado id={editarEmp.id} />}
+      {nuevoEmp && <ModalNuevoEmpleado />}
       {jornada && <ModalJornada id={jornada.id} fecha={jornada.fecha} />}
       {wa && <ModalWhatsAppBasico datos={wa} />}
     </>

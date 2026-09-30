@@ -10,6 +10,7 @@ import { Reg, formatearHora, getLocalHoyStr, minsToHHMM, minutosAHHMMSS, normali
 import { abrirModal, mostrarDetalle } from '../nav';
 import { asegurarRegistros, buscarEmpleado, esAdminMaster, mostrarLoader, sup, useSup } from '../store';
 import { PhotoCell, errorTexto, mostrarToast } from './comun';
+import { obtenerPrimerNombreYPrimerApellido } from '../legado/personas';
 
 interface VacInfo { tomadas: number | null; restantes: number | null; adjudicadas: number | null; vacaciones: { fecha: string }[] }
 
@@ -540,8 +541,7 @@ export function solicitarRegularizacionWhatsApp(empleadoId: string, fechaIso: st
   if (pActual && fechaIso && (fechaIso < pActual.inicio || fechaIso > pActual.fin)) {
     mostrarToast(`⚠️ La fecha ${fechaIso} no pertenece al período actual (${pActual.inicio} a ${pActual.fin}).`, 'warn');
   }
-  const partes = String(emp.nombre || 'Colaborador').trim().split(/\s+/);
-  const nombreDest = partes.length >= 3 ? `${partes[2]} ${partes[0]}` : partes[0];
+  const nombreDest = obtenerPrimerNombreYPrimerApellido(emp.nombre);
   const fParts = (fechaIso || '').split('-');
   const fFmt = fParts.length === 3 ? `${fParts[2]}/${fParts[1]}/${fParts[0]}` : fechaIso;
   const mensaje = `Estimado(a) *${nombreDest}*, le saludamos de Supervisión T-Control.\n\nLe recordamos que dentro del *período actual* mantiene pendiente la regularización de su asistencia de la fecha *${fFmt}* (Novedad: *${motivo}*).\n\nPor favor remita su justificativo médico o laboral correspondiente para asentar su jornada en nómina.\n\n¡Muchas gracias! 📋`;
@@ -577,7 +577,7 @@ async function toggleCulturaEmpleado(empleadoId: string, estadoActual: boolean) 
 }
 
 // triggerPhotoUpload: elegir imagen, reducir a JPEG y subir
-function subirFoto(empleadoId: string) {
+export function subirFoto(empleadoId: string) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
