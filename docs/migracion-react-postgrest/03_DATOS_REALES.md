@@ -87,7 +87,7 @@ Ausencias / novedades: `VACACIONES`/`VACACION`, `PERMISO`, `PERMISO_PERSONAL`, `
 - [ ] Lista de feriados oficiales a usar desde 2027.
 - [ ] Capturas de pantalla de referencia (ver `05_DISENO.md` §4).
 
-## 7. Base PostgreSQL actual (`asistencia` en 192.168.10.129:5432) — inventario del 2026-09-29
+## 7. Base PostgreSQL actual (`tcontrol_asistencia` en 192.168.10.129:5432) — inventario del 2026-09-29
 
 PostgreSQL 16.15 (imagen Alpine). Solo esquema `public`, sin RLS, sin claves foráneas, sin funciones ni vistas. Extensiones instaladas: `plpgsql`; disponible: `pgcrypto`. **No hay `pg_cron` ni `pgtap`** en la imagen: las tareas programadas irán al worker (o a una imagen propia con `pg_cron`). El Express se conecta con `tcontrol`, que es **superusuario** (con él no se aplica RLS).
 

@@ -67,8 +67,22 @@ Horarios, cortes y coordenadas viven en `core.horarios` y `core.configuracion`; 
 El JWT (HS256) lo firma la base con `private.secretos.jwt_secret` = `PGRST_JWT_SECRET`. Claims: `role`, `usuario`, `empleado_id`, `rol_app`, `dispositivo`, `debe_cambiar`, `iat`, `exp` (empleado y guardia 30 días, supervisor/admin 12 h; en `core.configuracion.auth`).
 `private.verificar_sesion()` corre antes de cada petición (`PGRST_DB_PRE_REQUEST`) y rechaza con 401 si la cuenta se desactivó, cambió de rol, cambió o se reseteó la contraseña, o si se vinculó otro dispositivo; con 403 si debe cambiar la contraseña.
 
+## App del empleado (008_app_empleado.sql, Fase 3)
+
+`api.mi_contexto`, `mis_registros`, `mis_dias_faltantes`, `marcar` (geocerca, hora del servidor, doble marcación,
+motivo de atraso, almuerzo, horas extra automáticas), `reportar_estado_hoy` (D-08, queda PENDIENTE y se encola el aviso),
+`justificar_faltas`, `cambiar_almuerzo`, `crear_solicitud_invitado` / `cancelar_solicitud_invitado`, `guardar_perfil`,
+`subir_foto` / `foto` (image/jpeg), `personal_taller` / `autorizar_extras`, `reportar_estado_emergencia`,
+`cambiar_emergencia`, `cultura_pregunta_del_dia` / `responder_cultura` (la respuesta correcta no sale al cliente) y `cerrar_sesion`.
+Los avisos de WhatsApp quedan en `core.cola_notificaciones` para el worker (Fase 6).
+
+Pruebas por hora con reloj simulado: `private.ahora_local()` respeta `app.ahora` solo si la sesión tiene
+`app.permitir_reloj_simulado = on` y no es `authenticator` (nunca a través de PostgREST).
+
+Desarrollo sin Docker: `node db/scripts/pgrst-dev.js` emula lo que la app usa de PostgREST (solo desarrollo).
+
 ## Pendiente para fases siguientes
 
-- Fase 3–5: RPC de escritura (`marcar`, reporte fuera de área, justificaciones, solicitudes, gestión de jornada) usando las funciones de `private`.
+- Fase 4–5: kiosco, guardia, catering y supervisor (RPC de escritura de gestión de jornada).
 - Cálculos de jornada neta, bolsa de 4 h y "Por Regularizar" (R-08 a R-11) junto con los reportes de la Fase 5.
 - Tareas programadas (autocompletar salidas, avisos WhatsApp): la imagen actual no tiene `pg_cron`; irán en el worker.

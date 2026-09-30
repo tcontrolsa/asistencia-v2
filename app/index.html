@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TCONTROL">
+    <meta name="application-name" content="TCONTROL">
+    <meta name="theme-color" content="#dc2626">
+    <meta name="description" content="Sistema de control de asistencia TCONTROL S.A.">
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="./assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="./assets/icons/icon-512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./assets/icons/icon-512.png">
+    <title>TCONTROL - Asistencia</title>
+</head>
+
+<body>
+    <!-- STATIC SPLASH SCREEN (ANIMACIÓN INDUSTRIAL: GRÚA, BANDA, RAYO Y LOGO TRANSFORMADO) — idéntico al legado -->
+    <div id="initialSplash" class="splash-screen">
+        <div class="splash-body">
+            <div class="splash-industrial-stage">
+                <div class="crane-rig" aria-hidden="true">
+                    <div class="crane-trolley"></div>
+                    <div class="crane-cable-line"></div>
+                    <div class="crane-hook-assembly">
+                        <svg viewBox="0 0 50 35" class="crane-hook-svg">
+                            <path
+                                d="M 25,0 L 25,10 M 10,10 L 40,10 M 14,10 L 8,26 A 6,6 0 0,0 20,26 M 36,10 L 42,26 A 6,6 0 0,1 30,26"
+                                stroke="#ffffff" stroke-width="2.8" fill="none" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="splash-logo-container">
+                    <img src="./assets/images/logo gris-blanco.png" alt="TCONTROL" class="splash-logo-img logo-state-initial"
+                        onerror="this.src='./assets/images/logo-blanco.png'">
+                    <img src="./assets/images/logo rojo_blanco.png" alt="TCONTROL" class="splash-logo-img logo-state-transformed"
+                        onerror="this.src='./assets/images/logo-blanco.png'">
+                    <div id="splashLogoFallback" style="display:none;" class="splash-logo">🛡️</div>
+                    <div class="lightning-strike-container" aria-hidden="true">
+                        <svg class="lightning-bolt-svg" viewBox="0 0 100 200" preserveAspectRatio="none">
+                            <defs>
+                                <filter id="lightningGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="3.5" result="blur1" />
+                                    <feGaussianBlur stdDeviation="8" result="blur2" />
+                                    <feMerge>
+                                        <feMergeNode in="blur2" />
+                                        <feMergeNode in="blur1" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+                                <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#ffffff" />
+                                    <stop offset="50%" stop-color="#ffffff" />
+                                    <stop offset="85%" stop-color="#fffbeb" />
+                                    <stop offset="100%" stop-color="#fde047" />
+                                </linearGradient>
+                            </defs>
+                            <path class="lightning-path" d="M 65,-40 L 42,35 L 68,48 L 26,120 L 52,128 L 47,192"
+                                filter="url(#lightningGlow)" />
+                            <path class="lightning-branch" d="M 42,35 L 18,65" filter="url(#lightningGlow)" />
+                            <path class="lightning-branch" d="M 26,120 L 8,145" filter="url(#lightningGlow)" />
+                        </svg>
+                        <div class="lightning-impact-glow"></div>
+                        <div class="lightning-impact-spark"></div>
+                    </div>
+                    <div class="logo-shockwave-container" aria-hidden="true">
+                        <div class="shockwave-ring ring-1"></div>
+                        <div class="shockwave-ring ring-2"></div>
+                        <div class="shockwave-pulse-beam"></div>
+                    </div>
+                </div>
+                <div class="conveyor-belt-assembly" aria-hidden="true">
+                    <div class="conveyor-track">
+                        <div class="conveyor-treads"></div>
+                    </div>
+                    <div class="conveyor-rollers">
+                        <div class="roller-wheel"><div class="wheel-spoke"></div></div>
+                        <div class="roller-wheel"><div class="wheel-spoke"></div></div>
+                        <div class="roller-wheel"><div class="wheel-spoke"></div></div>
+                        <div class="roller-wheel"><div class="wheel-spoke"></div></div>
+                        <div class="roller-wheel"><div class="wheel-spoke"></div></div>
+                    </div>
+                    <div class="conveyor-legs">
+                        <div class="conveyor-leg leg-left"></div>
+                        <div class="conveyor-leg leg-right"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="splash-badge-year">2026</div>
+            <div class="splash-subtitle">Control Biométrico de Asistencia</div>
+        </div>
+        <div class="splash-footer">
+            <div class="splash-loader-bar">
+                <div class="splash-loader-progress"></div>
+            </div>
+            <div class="splash-version-text">Sistema de Asistencia</div>
+        </div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

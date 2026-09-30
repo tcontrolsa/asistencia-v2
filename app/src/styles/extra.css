@@ -1,0 +1,17 @@
+/* Estilos que el legado inyectaba desde JavaScript (no están en CSS/index.css). */
+
+/* En el legado .app-container era hijo directo de <body>; #root no debe alterar ese diseño */
+#root { display: contents; }
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes zoomIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+#soporte-detalle:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+  outline: none;
+}

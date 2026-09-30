@@ -129,3 +129,23 @@ Preguntas abiertas: ver P-03 y P-04.
 | P-10 | **Replicar la hoja**: las filas repetidas cuentan como días tomados | `core.vacaciones_saldo_inicial.dias_duplicados_legado` (migración 006). 8 empleados, 23 filas. Con esto 93 de 95 empleados dan igual que `CALCULAR_vacaciones`; los 2 restantes: 1036 tiene una vacación del 29-sep aún no pasada a la hoja `VACACIONES` (correcto), y 1053 tiene el 22-sep como VACACIONES en la hoja `VACACIONES` y como FALTA en `REGISTROS` (**revisar**; hoy gana FALTA) |
 
 **Fase 2 — supuestos a confirmar:** (1) para crear la contraseña en el primer ingreso se pide la **cédula registrada** (sin ese dato, cualquiera que conozca un ID —son números correlativos— podría adueñarse de la cuenta); quien no tenga cédula registrada recibe una contraseña temporal de su supervisor. (2) Duración de sesión: empleado y guardia 30 días (PWA con dispositivo vinculado), supervisor y admin 12 horas. (3) Al vincular un dispositivo nuevo se cierra la sesión del anterior (R-22). (4) Un supervisor no puede resetear a otro supervisor ni a un admin; un supervisor admin sí resetea supervisores.
+
+## 8. Respuestas del 2026-09-29 (Fase 2 → 3)
+
+| ID | Respuesta | Implementación |
+|---|---|---|
+| P-09 | 1058 = ADMIN; 7, 8 y 1000 = SUPERVISOR (no hay Supervisor Admin por ahora) | Ya así en el ETL |
+| Supuestos Fase 2 | Confirmados: cédula al crear contraseña; sesión 30 días (empleado/guardia) y 12 h (supervisor/admin) | 007 |
+| P-02 | El kiosco marca con la **contraseña del empleado** | `api.marcar_kiosco` (Fase 3) |
+| P-07 | **Borrar** las 5 selfies de la base real | Se quita `raw_data->'foto'` de esos registros (se conservan las marcaciones) |
+| 1053 | El 22-sep fue **vacación** | En choques, la VACACIONES de la hoja prevalece sobre una FALTA del mismo día |
+
+## 9. Respuestas del 2026-09-30 (Fase 3, app del empleado)
+
+| ID | Respuesta | Implementación |
+|---|---|---|
+| P-12 | Modo CAMPO solo a **más de 250 km** de la planta (es la regla del legado, no un error) | `core.configuracion.app_empleado.campo_distancia_minima_m = 250000` |
+| P-13 | Re-entrada tras "Voy a regresar (Permiso)": el legado dejaba el botón en "JORNADA FINALIZADA" (defecto); se corrige | Botón "REGISTRAR RE-ENTRADA" tras una salida con permiso y luego "REGISTRAR SALIDA" |
+| P-14 | Motivo de entrada tardía (D-01): en el legado la pantalla existía pero nunca se mostraba; se activa | `api.marcar` exige motivo si la primera ENTRADA del día pasa del límite (07:45) |
+| D-07 | Confirmado: el empleado ya no fija su base de campo | La app muestra "Proyecto asignado por supervisor" |
+| P-15 | Aviso legal LOPDP, cláusula 2: hablaba de "fotografía / selfie" biométrica que no existe; se ajusta | Nueva cláusula "Fotografía de Perfil (Sin Captura Biométrica)" |

@@ -31,3 +31,4 @@ dist-ssr
 *.xls
 *.csv
 db/etl/reportes/
+*.tsbuildinfo

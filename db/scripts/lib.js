@@ -11,7 +11,7 @@ pg.types.setTypeParser(1082, v => v);
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 dotenv.config({ path: path.join(RAIZ, '.env'), quiet: true });
 
-export const BASE_PRODUCCION = process.env.PGDATABASE || 'asistencia';
+export const BASE_PRODUCCION = process.env.PGDATABASE || 'tcontrol_asistencia';
 export const BASE_DEV = process.env.PGDATABASE_DEV || 'asistencia_v2_dev';
 
 export function baseDestino(argv = process.argv) {

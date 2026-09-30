@@ -421,15 +421,18 @@ try {
     mismo_dia_reemplazadas: novOrigen.total - novOrigen.desconocidos - nov.rowCount, tipos_desconocidos: novOrigen.tipos });
   if (novOrigen.desconocidos) reporte.avisos.push(`${novOrigen.desconocidos} registros con tipo no reconocido (${novOrigen.tipos}) no se importaron.`);
 
-  // 7) Vacaciones de la hoja VACACIONES (y respaldo de desvinculados). No reemplaza otra novedad del mismo día.
+  // 7) Vacaciones de la hoja VACACIONES (y respaldo de desvinculados). Prevalecen sobre una FALTA del
+  //    mismo día (caso 1053, 22-sep, confirmado por el usuario); otras novedades se conservan y se reportan.
   const vacs = [...hojaVacaciones.filter(v => /^VACACI/.test(v.tipo || 'VACACIONES')), ...desv.vacaciones];
   const vac = await c.query(`
-    INSERT INTO core.novedades (empleado_id, fecha, tipo, justificado, origen, legacy_id)
+    INSERT INTO core.novedades AS n (empleado_id, fecha, tipo, justificado, origen, legacy_id)
     SELECT DISTINCT ON (x.empleado_id, x.fecha) x.empleado_id, x.fecha::date, 'VACACIONES', 'SI', 'IMPORTADO', x.legacy_id
     FROM jsonb_to_recordset($1::jsonb) AS x(legacy_id text, empleado_id text, fecha text)
     WHERE EXISTS (SELECT 1 FROM core.empleados e WHERE e.id = x.empleado_id)
     ORDER BY x.empleado_id, x.fecha, x.legacy_id
-    ON CONFLICT (empleado_id, fecha) DO NOTHING`, [J(vacs)]);
+    ON CONFLICT (empleado_id, fecha) DO UPDATE SET tipo = 'VACACIONES', justificado = 'SI', motivo = NULL,
+      legacy_id = EXCLUDED.legacy_id, legacy_raw = jsonb_build_object('reemplazo', n.tipo, 'legacy_id_anterior', n.legacy_id)
+    WHERE n.tipo = 'FALTA'`, [J(vacs)]);
   const choques = (await c.query(`
     SELECT count(*)::int n FROM jsonb_to_recordset($1::jsonb) AS x(empleado_id text, fecha text)
     JOIN core.novedades n ON n.empleado_id = x.empleado_id AND n.fecha = x.fecha::date AND n.tipo <> 'VACACIONES'`,

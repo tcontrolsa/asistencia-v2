@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pgrst-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["db/scripts/pgrst-dev.js"],
+      "port": 3001
+    },
+    {
+      "name": "app-empleado",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "app", "run", "dev"],
+      "port": 5180
+    }
+  ]
+}
