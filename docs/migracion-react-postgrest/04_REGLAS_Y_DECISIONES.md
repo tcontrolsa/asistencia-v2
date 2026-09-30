@@ -160,3 +160,40 @@ Preguntas abiertas: ver P-03 y P-04.
 | Acceso catering | ID + PIN de 4 dígitos | ID + contraseña del supervisor; sin vincular dispositivo |
 | Kiosco | No existía | Nuevo (D-23), sin cámara, con la contraseña del colaborador (P-02), estilo de la terminal de guardia |
 | Actualización forzada remota | `forzar_actualizacion_ts` en Firestore cada 15 min | Service worker con `autoUpdate` y comprobación cada 15 min (igual que la app) |
+
+## 11. Fase 5 — panel de supervisor (2026-09-30)
+
+**D-24 (nueva).** El panel conserva el motor de cálculo del legado portado 1:1 a TypeScript
+(`app/src/supervisor/legado/*.ts`: detalle, control diario, dashboard, reportes, desgloses). La base entrega los
+registros con la forma del legado (`private.registros_legado`) para que los mismos cálculos den los mismos números:
+
+- Los motivos que escribe el colaborador (`motivo_entrada_tardia`, `motivo_salida`, `tipo_salida`, `razon_permiso`)
+  se entregan solo para mostrar (`*_empleado`) y no justifican (D-08). Las filas del archivo de Sheets sin editar
+  sí exponen `razon_salida`, `razon_entrada_tardia` y `tipo_salida`, como las leía `normR`.
+- Los reportes del colaborador pendientes de aprobación (D-08) llegan como tipo `ESTADO` con `pendiente_aprobacion`.
+- Los minutos de `ajustes_dia` van en la ENTRADA del día (o en el primer registro); un día solo con minutos llega
+  como `AJUSTE_TIEMPO`.
+- Las ausencias importadas de Firestore sin editar se entregan como las normalizaba el legado: `justificado` vacío =
+  `SI` y la hora del documento o, si falta, la de su `timestamp` (migración 013). Los datos guardados no cambian.
+
+**Paridad de reportes** (`node app/scripts/paridad-supervisor.mjs --periodos 6`, base de desarrollo): el motor se
+aplica a los registros como los veía el legado (copia de Firestore + filas de la hoja + vacaciones de la hoja) y a los
+de la base nueva. Detalle por colaborador y período: 95 % idéntico; reporte mensual por colaborador (asistencias,
+faltas, atrasos, permisos, por justificar, a descontar, almuerzos, extras, entradas/salidas): 616 de 648 filas
+idénticas. Todas las diferencias vienen de los datos de origen, no del cálculo: salidas `AUTO_COMPLETAR` y
+marcaciones que solo existen en la hoja (el legado las ocultaba si Firestore tenía registros ese día), usuarios de
+prueba y una hora cruda anómala (1058, 29/09).
+
+| Tema | Legado | Nuevo |
+|---|---|---|
+| Datos del panel | Firestore (~60 días) + Sheets en memoria | `api.sup_datos` (60 días) y `api.sup_registros` / `api.sup_solicitudes_invitados` bajo demanda para períodos anteriores, anual e histórico |
+| PIN en la ficha | Campo PIN | Campo Cédula (no hay PIN, D-06) |
+| Cambio de rol | Cualquier supervisor desde la ficha | Supervisor Admin asigna Supervisor; solo el Admin asigna Supervisor Admin; el rol ADMIN no se cambia desde la ficha |
+| Horas extra manuales | Se recalculaban | Un valor explícito del supervisor se respeta |
+| Guardar horas en Gestión de jornada | Dejaba la novedad del día | La novedad del día se elimina al guardar horas (el día deja de ser ausencia) |
+| Directorio: Inactivos | Siempre 0 (solo activos en memoria) | Se conserva el comportamiento |
+| Tarjetas de "Resumen Mensual" | Sin SweetAlert cargado: solo mostraban un aviso | Mismo aviso |
+| Exportar a Google Sheets | Hoja nueva `Rep_…` vía Apps Script | Pendiente del worker de integraciones (Fase 6); el botón lo indica y Excel queda disponible |
+| PDF de KPIs | html2pdf desde CDN | html2pdf.js 0.14 (sin la vulnerabilidad de jspdf ≤ 4.2.0) cargado bajo demanda; fuera del precache del PWA |
+| Modales "Justificar" y "Desglose de inasistencias" | Código presente pero inalcanzable (sus contenedores no existen en `supervisor.html`) | No se migran |
+| WhatsApp desde el panel | Envío por OpenWA con la llave en el navegador | Temporalmente `wa.me` hasta el bloque de WhatsApp (la llave queda en el servidor) |

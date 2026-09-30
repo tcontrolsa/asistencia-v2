@@ -10,6 +10,7 @@ import { buscarEmpleado, cargarDatosCompletos, idSesion, rolSesion, sup, useSup 
 import { Avisos, fotoDe, mostrarToast } from './ui/comun';
 import { Paneles } from './ui/Paneles';
 import { ModalesSupervisor } from './ui/ModalesSupervisor';
+import { ModalesDesglose } from './ui/Desgloses';
 
 export function SupervisorApp() {
   const [conSesion, setConSesion] = useState(() => {
@@ -36,6 +37,7 @@ export function SupervisorApp() {
       {conSesion && <Panel />}
       {!conSesion && <Login onIngresar={() => setConSesion(true)} />}
       <ModalesSupervisor />
+      <ModalesDesglose />
       <AvisoPrivacidad />
     </>
   );

@@ -4,9 +4,11 @@ import { s } from '../../lib/estilo';
 import { cambiarSubtabAsistencia, cambiarSubtabServicios } from '../nav';
 import { useSup } from '../store';
 import { ControlDiario } from './ControlDiario';
+import { Dashboard } from './Dashboard';
 import { PanelDetalle } from './Detalle';
 import { Directorio } from './Directorio';
 import { Mapa } from './Mapa';
+import { Reportes } from './Reportes';
 
 function PanelBase({ id, activo, children }: { id: string; activo: boolean; children: ReactNode }) {
   return <div id={`panel-${id}`} className={`panel${activo ? ' active' : ''}`}>{activo ? children : null}</div>;
@@ -16,8 +18,8 @@ export function Paneles() {
   const panel = useSup(x => x.panel);
   return (
     <>
-      <PanelBase id="dashboard" activo={panel === 'dashboard'}><Pendiente texto="Dashboard" /></PanelBase>
-      <PanelBase id="reportes" activo={panel === 'reportes'}><Pendiente texto="Reportes" /></PanelBase>
+      <PanelBase id="dashboard" activo={panel === 'dashboard'}><Dashboard /></PanelBase>
+      <PanelBase id="reportes" activo={panel === 'reportes'}><Reportes /></PanelBase>
       <PanelBase id="asistencia" activo={panel === 'asistencia'}><PanelAsistencia /></PanelBase>
       <PanelBase id="opciones" activo={panel === 'opciones'}><Pendiente texto="Opciones adicionales" /></PanelBase>
       <PanelBase id="servicios" activo={panel === 'servicios'}><PanelServicios /></PanelBase>

@@ -1,5 +1,6 @@
 // Detalle del colaborador (mostrarDetalle del legado): ficha, métricas del período e historial por día.
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { exportarExcelDetalleEmpleado } from './exportarDetalle';
 import { useEffect, useMemo, useState } from 'react';
 import { rpc } from '../../lib/api';
 import { s } from '../../lib/estilo';
@@ -223,7 +224,7 @@ export function PanelDetalle() {
                 title={`Crear Registro Manual de Asistencia para ${e.nombre}`}>
                 <i className="fas fa-plus-circle"></i> Registro Manual
               </button>
-              <button className="btn btn-success" onClick={() => mostrarToast('La exportación a Excel del detalle se habilita con el módulo de Reportes.', 'info')}
+              <button className="btn btn-success" onClick={() => exportarExcelDetalleEmpleado(e.id, indexPeriodo, det?.customInicio || null, det?.customFin || null)}
                 style={s('font-size:11px; padding:4px 10px; height:auto; display:inline-flex; align-items:center; gap:6px;')}>
                 <i className="fas fa-file-excel"></i> Exportar Excel
               </button>

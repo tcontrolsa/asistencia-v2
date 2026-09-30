@@ -38,6 +38,8 @@ export default defineConfig(({ mode }) => {
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/rest\//, /\/rpc\//],
           globPatterns: ['**/*.{js,css,html,png,woff2}'],
+          // Librerías de exportación cargadas bajo demanda en el panel de supervisor: fuera del precache
+          globIgnores: ['**/assets/xlsx-*.js', '**/assets/html2pdf-*.js', '**/assets/html2canvas*.js', '**/assets/jspdf*.js', '**/assets/purify*.js', '**/assets/index.es-*.js'],
           runtimeCaching: [],               // la API nunca se cachea: la hora y el estado vienen del servidor
         },
       }),

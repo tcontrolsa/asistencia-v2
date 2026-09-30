@@ -94,8 +94,18 @@ aplicaba en la guardia).
 
 Cuentas de prueba de desarrollo: `db/seeds/dev_prueba_terminales.sql`.
 
+## Panel de supervisor (Fase 5)
+
+Lectura con la forma de registro del legado (D-24, `private.registros_legado`):
+
+- `api.sup_datos(p_desde?)`: fichas, registros de los últimos 60 días, emergencia activa, solicitudes de invitados,
+  saldos de vacaciones y feriados. `api.sup_registros(desde, hasta, empleado?)` y
+  `api.sup_solicitudes_invitados(desde, hasta)` traen rangos anteriores (reportes, anual, histórico).
+- Escritura (010–012): almuerzo, ausencias, gestión de jornada, permisos, edición de horas, registro manual, eventos
+  futuros, trabajo en campo, solicitudes de invitados, ficha y alta de colaboradores, foto.
+- Los cálculos (jornada neta, bolsa de 4 h, por regularizar, KPIs, reportes) se hacen en el navegador con el motor
+  portado del legado; `node app/scripts/paridad-supervisor.mjs` compara sus números contra los datos del legado.
+
 ## Pendiente para fases siguientes
 
-- Fase 5: supervisor (RPC de escritura de gestión de jornada).
-- Cálculos de jornada neta, bolsa de 4 h y "Por Regularizar" (R-08 a R-11) junto con los reportes de la Fase 5.
 - Tareas programadas (autocompletar salidas, avisos WhatsApp): la imagen actual no tiene `pg_cron`; irán en el worker.

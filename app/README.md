@@ -44,3 +44,19 @@ Una página por actor, como el legado (`rollupOptions.input` en `vite.config.ts`
 
 Cada módulo guarda su sesión con su propia clave (`usarClaveSesion`), así que la app del empleado, la guardia y el
 catering pueden convivir en el mismo navegador. La hora de la advertencia de salida anticipada es la del servidor (`api.ahora`).
+
+## Panel de supervisor (Fase 5)
+
+`supervisor.html` (sesión propia `TCONTROL_SESION_SUPERVISOR`). Estructura en `src/supervisor/`:
+
+| Carpeta / archivo | Contenido |
+|---|---|
+| `legado/*.ts` | Motor de cálculo portado 1:1 de `JS/supervisor_core.js` y `supervisor_reportes_custom.js` (D-24): utilidades, control diario, detalle, dashboard, reportes, desgloses |
+| `store.ts`, `nav.ts`, `reportesEstado.ts` | Estado del panel (`empCache`, períodos…), navegación y modales, filtros compartidos de Dashboard y Reportes |
+| `ui/*.tsx` | Paneles y modales con el marcado y CSS del legado (`styles/legacy-supervisor*.css`) |
+| `excel.ts` | SheetJS y html2pdf.js cargados bajo demanda (fuera del precache del PWA) |
+
+Hechos: Control diario, Detalle de empleado, Gestión de jornada, Registro manual, Eventos futuros, Trabajo en campo,
+Almuerzo extra, Directorio, Mapa, Dashboard (KPIs, detalle por colaborador, rankings, resumen mensual, desgloses
+histórico y de vacaciones) y Reporte interactivo (períodos, quincenas, filtros, vistas y columnas, Excel, impresión,
+reporte individual). Paridad de números: `node app/scripts/paridad-supervisor.mjs [--periodos N] [--detalle]`.

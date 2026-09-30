@@ -22,6 +22,8 @@ await build({
     contents: `export * from './src/supervisor/legado/util';
                export * from './src/supervisor/legado/asistencia';
                export * from './src/supervisor/legado/detalle';
+               export * from './src/supervisor/legado/reportes';
+               export * from './src/supervisor/legado/dashboard';
                export { armarEmpleados } from './src/supervisor/store';`,
     resolveDir: path.join(raiz, 'app'), loader: 'ts',
   },
@@ -129,3 +131,64 @@ console.log(`Colaboradores activos: ${A.empCache.length}; períodos: ${periodos.
 console.log(`Iguales: ${iguales} (${(100 * iguales / casos).toFixed(1)} %); con diferencias: ${difs.length}`);
 console.log('Diferencias por indicador:', porCampo);
 if (verDetalle) difs.slice(0, 40).forEach(x => console.log(JSON.stringify(x)));
+
+// ── Reporte mensual (cargarReportes) y KPIs por período: totales de la empresa ──
+const hoyRep = M.getLocalHoyStr();
+const CAMPOS_REP = ['asistencias', 'faltas', 'diasVacaciones', 'diasJustificados', 'diasExtras', 'diasCampo', 'atrasos', 'minutosAtrasos',
+  'permisoMedico', 'permisoPersonal', 'tiempoPorJustificar', 'tiempoADescontar', 'almPlanta', 'almFuera', 'horasExtra50', 'horasExtra100',
+  'horasCampo50', 'horasCampo100', 'entradas', 'entradasAuto', 'salidas', 'salidasAuto'];
+const vacVacio = {};
+let perIguales = 0, colIguales = 0, colCasos = 0;
+for (const p of periodos) {
+  const sA = M.calcularStatsReportes(A.empCache, p.inicio, p.fin, hoyRep);
+  const sB = M.calcularStatsReportes(B.empCache, p.inicio, p.fin, hoyRep);
+  const dif = {};
+  CAMPOS_REP.forEach(k => { const a = M.sumar(sA, k), b = M.sumar(sB, k); if (a !== b) dif[k] = [a, b]; });
+  sA.forEach(x => {
+    const y = sB.find(z => z.id === x.id);
+    if (!y) return;
+    colCasos++;
+    if (CAMPOS_REP.every(k => x[k] === y[k])) colIguales++;
+    else if (verDetalle) console.log('rep', p.label, x.id, JSON.stringify(Object.fromEntries(CAMPOS_REP.filter(k => x[k] !== y[k]).map(k => [k, [x[k], y[k]]]))));
+  });
+  const kA = M.calcularKpisDetallados(A.empCache, p, hoyRep, vacVacio);
+  const kB = M.calcularKpisDetallados(B.empCache, p, hoyRep, vacVacio);
+  ['totOrdinarias', 'totEsperadas', 'totVacaciones', 'totInasistencias', 'totExtras', 'promGlobalAsist'].forEach(k => { if (kA[k] !== kB[k]) dif['kpi.' + k] = [kA[k], kB[k]]; });
+  if (!Object.keys(dif).length) perIguales++;
+  console.log(`Reporte ${p.label}: ${Object.keys(dif).length ? 'difiere ' + JSON.stringify(dif) : 'totales idénticos'}`);
+}
+console.log(`Reporte mensual: períodos con totales idénticos ${perIguales}/${periodos.length}; filas colaborador-período idénticas ${colIguales}/${colCasos} (${(100 * colIguales / colCasos).toFixed(1)} %)`);
+
+if (args.includes('--kpi-detalle')) {
+  const p = periodos[Number(args[args.indexOf('--kpi-detalle') + 1]) || 2];
+  const kA = M.calcularKpisDetallados(A.empCache, p, hoyRep, {}), kB = M.calcularKpisDetallados(B.empCache, p, hoyRep, {});
+  let n = 0;
+  for (const fa of kA.filas) {
+    const fb2 = kB.filas.find(x => x.id === fa.id);
+    if (!fb2 || (fa.ord === fb2.ord && fa.ext === fb2.ext)) continue;
+    if (n++ > 3) break;
+    console.log('KPI', fa.id, fa.nombre, 'A', fa.ord, fa.ext, 'B', fb2.ord, fb2.ext);
+    const eA = A.empCache.find(x => x.id === fa.id), eB = B.empCache.find(x => x.id === fa.id);
+    const fechasA = new Set(eA.registros.filter(r => r.fecha >= p.inicio && r.fecha <= p.fin && (r.justificado === 'SI' || r.tipo === 'ENTRADA')).map(r => r.fecha));
+    const fechasB = new Set(eB.registros.filter(r => r.fecha >= p.inicio && r.fecha <= p.fin && (r.justificado === 'SI' || r.tipo === 'ENTRADA')).map(r => r.fecha));
+    const solo = [...fechasA].filter(f => !fechasB.has(f)).slice(0, 2);
+    solo.forEach(f => {
+      console.log('  A', f, JSON.stringify(eA.registros.filter(r => r.fecha === f).map(r => ({ t: r.tipo, j: r.justificado, h: r.hora, ra: r.razon_ausencia }))));
+      console.log('  B', f, JSON.stringify(eB.registros.filter(r => r.fecha === f).map(r => ({ t: r.tipo, j: r.justificado, h: r.hora, ra: r.razon_ausencia }))));
+    });
+  }
+}
+
+if (args.includes('--dif-dias')) {
+  const id = args[args.indexOf('--dif-dias') + 1];
+  const p = periodos[Number(args[args.indexOf('--dif-dias') + 2] ?? 1)];
+  const eA = A.empCache.find(x => x.id === id), eB = B.empCache.find(x => x.id === id);
+  const k = r => JSON.stringify(Object.fromEntries(Object.entries(r).filter(([x, v]) => !["id", "empleadoId", "fecha", "lat", "lng", "origen", "creado_por", "nombre", "dia", "estado_timestamp"].includes(x) && v !== "" && v !== 0 && v != null).sort()));
+  for (let f = p.inicio; f <= p.fin; f = M.sumarDias(f, 1)) {
+    const a = eA.registros.filter(r => r.fecha === f).map(k).sort().join(' ; ');
+    const b = eB.registros.filter(r => r.fecha === f).map(k).sort().join(' ; ');
+    const dA = M.calcularStatEmpleado(eA, f, f, hoyRep), dB = M.calcularStatEmpleado(eB, f, f, hoyRep);
+    const cambia = CAMPOS_REP.filter(c => dA[c] !== dB[c]).map(c => `${c}:${dA[c]}/${dB[c]}`).join(' ');
+    if (a !== b && (cambia || args.includes('--todo'))) console.log(f, cambia, '\n  A:', a, '\n  B:', b);
+  }
+}

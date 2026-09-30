@@ -189,6 +189,22 @@ export async function asegurarRegistros(desde: string, hasta: string, empleadoId
   return true;
 }
 
+// Solicitudes de invitados de un rango (la carga inicial trae solo las 300 más recientes)
+const rangosSolicitudes = new Set<string>();
+export async function asegurarSolicitudes(desde: string, hasta: string): Promise<boolean> {
+  const clave = `${desde}|${hasta}`;
+  if (rangosSolicitudes.has(clave)) return false;
+  const actuales = estado.solicitudesInvitados;
+  const masAntigua = actuales.reduce((min: string, x: any) => (!min || x.fecha < min ? x.fecha : min), '');
+  if (actuales.length < 300 || (masAntigua && desde >= masAntigua)) return false;
+  rangosSolicitudes.add(clave);
+  const lista = await rpc<any[]>('sup_solicitudes_invitados', { p_desde: desde, p_hasta: hasta });
+  const ids = new Set(actuales.map((x: any) => x.id));
+  const nuevas = lista.filter(x => !ids.has(x.id)).map(solicitudLegado);
+  if (nuevas.length) sup.set({ solicitudesInvitados: [...actuales, ...nuevas] });
+  return nuevas.length > 0;
+}
+
 let watchdog: number | undefined;
 export function mostrarLoader(show: boolean, texto = 'Cargando datos...', subtexto = 'Sincronizando información en tiempo real') {
   if (watchdog) { clearTimeout(watchdog); watchdog = undefined; }

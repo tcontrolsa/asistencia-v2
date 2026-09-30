@@ -15,3 +15,15 @@
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
   outline: none;
 }
+
+/* Dashboard: efectos que el legado aplicaba con onmouseover/onmouseout */
+#panel-dashboard .btn-hover-indigo:hover { background: #e0e7ff !important; }
+#panel-dashboard .btn-hover-green:hover { background: #dcfce7 !important; }
+#panel-dashboard .btn-hover-teal:hover { background: #ccfbf1 !important; }
+#tbodyKpiDetalle .fila-kpi-detalle { background-color: #ffffff; }
+#tbodyKpiDetalle .fila-kpi-detalle:hover { background-color: #f8fafc; }
+.fila-desglose { background: #ffffff; }
+.fila-desglose:hover { background-color: #f8fafc; }
+.btn-cerrar-gris:hover { color: #1e293b !important; }
+.btn-ver-expediente { background: #f8fafc; }
+.btn-ver-expediente:hover { background: #e2e8f0; }
