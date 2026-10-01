@@ -25,6 +25,8 @@ export const config = {
     credenciales: env('GOOGLE_CREDENCIALES'),          // ruta al JSON de la cuenta de servicio
     hojaId: env('SHEETS_ID'),                           // ID del archivo de Google Sheets compartido con la cuenta
   },
+  // Fase 7: proyecto Firebase del legado (lectura pública de registros y empleados)
+  firestoreProyecto: env('FIRESTORE_PROYECTO', 'tcontrol-asistencia'),
   intervaloColaMs: Number(env('WORKER_INTERVALO_COLA_MS', '5000')),
   intervaloTareasMs: 60_000,
 };

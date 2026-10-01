@@ -135,5 +135,8 @@ Exportación a Google Sheets: `api.sup_exportar_sheets` + `api.sup_estado_export
 Horas en `core.configuracion.tareas`; enlaces del mensaje de bienvenida en `core.configuracion.enlaces`.
 Ver `worker/README.md`.
 
+Operación en paralelo (020, Fase 7): `private.worker_copia_legado` (Firestore → `core.legado_documentos` y marcaciones/novedades
+`fs:<id>`), `private.worker_paralelo_datos`, `core.paralelo_reportes`, `api.sup_paralelo` (Sup. Admin).
+
 Simulador de Vista (019): `api.sup_simular_lista`, `api.sup_simular_empleado` (Sup. Admin/Admin) emiten un JWT con
 `simulado`; `private.verificar_sesion` lo valida contra quien simula y pone la transacción en solo lectura.

@@ -7,7 +7,8 @@ import { leerClaims } from '../lib/sesion';
 
 const NOMBRES_TAREA: Record<string, string> = {
   reset_autorizaciones: 'Reset de autorizaciones de horas extra', autocompletar_salidas: 'Autocompletar salidas',
-  aviso_no_registro: 'Aviso WhatsApp "no registró entrada"',
+  aviso_no_registro: 'Aviso WhatsApp "no registró entrada"', copia_legado: 'Copia de Firestore (legado)',
+  reporte_paralelo: 'Reporte de diferencias (paralelo)',
 };
 
 export function DiagnosticoApp() {
@@ -16,6 +17,7 @@ export function DiagnosticoApp() {
   const [estado, setEstado] = useState<any>(null);
   const [log, setLog] = useState<{ t: string; m: string; ok: boolean }[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [paralelo, setParalelo] = useState<any>(null);
 
   const anotar = (m: string, ok = true) => setLog(l => [...l, { t: new Date().toLocaleTimeString('es-EC'), m, ok }]);
 
@@ -31,6 +33,10 @@ export function DiagnosticoApp() {
     } finally { setCargando(false); }
   };
   useEffect(() => { if (autorizado) void probar(); }, [autorizado]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fase 7: reporte diario de diferencias (solo Sup. Admin / Admin)
+  const verParalelo = (fecha?: string) => rpc<any>('sup_paralelo', fecha ? { p_fecha: fecha } : {}).then(setParalelo).catch(() => setParalelo(null));
+  useEffect(() => { if (autorizado && ['supervisor_admin', 'admin'].includes(claims!.role)) void verParalelo(); }, [autorizado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const info = () => anotar(`ℹ️ API: ${urlApi('')} · Navegador: ${navigator.userAgent} · En línea: ${navigator.onLine ? 'sí' : 'no'} · Service worker: ${'serviceWorker' in navigator ? 'soportado' : 'no soportado'}`);
 
@@ -93,12 +99,73 @@ export function DiagnosticoApp() {
                 t.error ? `❌ ${t.error}` : `${t.inicio?.slice(11)} · ${JSON.stringify(t.resultado)}`)) : fila('Tareas', 'Aún no se ejecutan')}
             </tbody></table>
           </div>
+          {paralelo && <SeccionParalelo datos={paralelo} onFecha={f => void verParalelo(f)} />}
           <div className="container">
             <h2>5️⃣ Estado General</h2>
             <div className={estado.worker?.activo ? 'status ok' : 'status warning'}>
               {estado.worker?.activo ? '✅ Servidor y worker de notificaciones operativos' : '⚠️ Servidor operativo · worker de notificaciones sin latido reciente (los envíos quedan en cola)'}
             </div>
           </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const NOMBRE_INDICADOR: Record<string, string> = {
+  asistencias: 'Asistencias', faltas: 'Faltas', diasVacaciones: 'Vacaciones', diasJustificados: 'Justificados', diasExtras: 'Días extra',
+  diasCampo: 'Campo', atrasos: 'Atrasos', minutosAtrasos: 'Min. atraso', permisoMedico: 'Permiso médico', permisoPersonal: 'Permiso personal',
+  tiempoPorJustificar: 'Por justificar', tiempoADescontar: 'A descontar', almPlanta: 'Almuerzo planta', almFuera: 'Almuerzo fuera',
+  horasExtra50: 'Extra 50 %', horasExtra100: 'Extra 100 %', horasCampo50: 'Campo 50 %', horasCampo100: 'Campo 100 %',
+  entradas: 'Entradas', entradasAuto: 'Entradas auto', salidas: 'Salidas', salidasAuto: 'Salidas auto',
+};
+
+// Operación en paralelo (Fase 7): legado (Firestore) vs base nueva, mismo motor de cálculo
+function SeccionParalelo({ datos, onFecha }: { datos: any; onFecha: (f: string) => void }) {
+  const rep = datos.reporte;
+  const dia = rep?.resumen?.dia;
+  const per = rep?.resumen?.periodo;
+  return (
+    <div className="container">
+      <h2>🔁 Operación en paralelo · legado vs base nueva</h2>
+      {!rep ? <div className="status warning">Aún no hay reportes: el worker los genera cada noche después de copiar Firestore.</div> : (
+        <>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {datos.dias.map((d: any) => (
+              <button key={d.fecha} onClick={() => onFecha(d.fecha)} style={d.fecha === rep.fecha ? { background: '#1f6feb' } : undefined}
+                title={`${d.iguales} iguales · ${d.conDiferencias} con diferencias`}>
+                {d.fecha.slice(5)} {d.sinExplicar > 0 ? `⚠️${d.sinExplicar}` : '✓'}
+              </button>
+            ))}
+          </div>
+          <div className={dia?.sinExplicar ? 'status warning' : 'status ok'}>
+            {rep.fecha}: {dia?.iguales} de {dia?.comparados} colaboradores idénticos · {dia?.conDiferencias} con diferencias
+            {dia?.sinExplicar ? ` (${dia.sinExplicar} por revisar)` : ' (todas explicadas)'} · generado {rep.generado}
+          </div>
+          {per && (
+            <table><tbody>
+              <tr><th>Período</th><td>{per.label} (hasta {per.hasta})</td></tr>
+              <tr><th>Filas colaborador idénticas</th><td>{per.filasIguales} de {per.colaboradores}</td></tr>
+              <tr><th>Totales distintos (legado / nuevo)</th><td>{Object.keys(per.totalesDistintos || {}).length
+                ? Object.entries(per.totalesDistintos).map(([k, v]: any) => `${NOMBRE_INDICADOR[k] || k}: ${v[0]} / ${v[1]}`).join(' · ') : 'Ninguno'}</td></tr>
+            </tbody></table>
+          )}
+          {rep.diferencias?.length > 0 && (
+            <table style={{ marginTop: 10 }}>
+              <thead><tr><th>Colaborador</th><th>Causa</th><th>Indicadores (legado / nuevo)</th><th>Legado</th><th>Nuevo</th></tr></thead>
+              <tbody>
+                {rep.diferencias.map((d: any) => (
+                  <tr key={d.id}>
+                    <td>{d.nombre} ({d.id})</td>
+                    <td title={d.explicacion}>{d.causa}</td>
+                    <td>{Object.entries(d.indicadores).map(([k, v]: any) => `${NOMBRE_INDICADOR[k] || k}: ${v[0]}/${v[1]}`).join(', ')}</td>
+                    <td>{(d.legado || []).join(', ') || '—'}</td>
+                    <td>{(d.nuevo || []).join(', ') || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </>
       )}
     </div>

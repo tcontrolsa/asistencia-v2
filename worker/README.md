@@ -6,6 +6,7 @@ Proceso Node pequeño que hace lo que PostgreSQL no hace solo (la imagen no trae
 |---|---|---|
 | 1 min | Latido: estado de OpenWA (sesión lista, número emisor) para el panel y `diagnostico.html` | `private.worker_latido` |
 | 1 min | Tareas programadas: reset de autorizaciones de horas extra (00:05), autocompletar salidas (00:30), aviso WhatsApp "no registró entrada" (hora de corte y días del panel) | `private.worker_tareas` |
+| 1 min | Fase 7 (operación en paralelo): copia de Firestore del legado (00:15) y reporte diario de diferencias (00:45), con el motor del legado empaquetado en `src/generado/motor-legado.mjs` (`npm run motor:worker` en `app/`) | `private.worker_tarea_externa`, `private.worker_copia_legado`, `private.worker_paralelo_datos` |
 | 5 s | Cola: avisos por evento → mensajes, envío por OpenWA (1,2 s entre mensajes), exportación a Google Sheets | `private.worker_tomar` / `private.worker_resultado` |
 
 Las horas de las tareas están en `core.configuracion.tareas`; cada tarea corre **una vez por día** y queda en
@@ -32,6 +33,7 @@ del día que ya pasaron su hora. Los mensajes que no se pudieron enviar en 12 h 
 cd worker && npm ci
 node src/index.js --una-vez     # un ciclo (latido, tareas y cola) y termina
 node src/index.js               # servicio
+node src/index.js --paralelo [YYYY-MM-DD]   # copia de Firestore y reporte de ese día (por defecto ayer)
 ```
 
 En el servidor: servicio `worker` de `db/postgrest/docker-compose.yml` (`docker compose --env-file ../../.env up -d worker`).

@@ -5,6 +5,8 @@ import pg from 'pg';
 import { config } from './config.js';
 import { ErrorEnvio, crearOpenWA } from './openwa.js';
 import { crearSheets } from './sheets.js';
+import { crearFirestore } from './firestore.js';
+import { copiaLegado, diaAnterior, reporteParalelo } from './paralelo.js';
 
 const log = (...a) => console.log(`[${new Date().toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}]`, ...a);
 const esperar = ms => new Promise(r => setTimeout(r, ms));
@@ -17,6 +19,7 @@ if (!config.dbUri) {
 const pool = new pg.Pool({ connectionString: config.dbUri, max: 2, application_name: 'tcontrol-worker' });
 const sql = async (texto, params = []) => (await pool.query(texto, params)).rows[0]?.v;
 const sheets = crearSheets(config.sheets);
+const firestore = crearFirestore({ proyecto: config.firestoreProyecto });
 let wa = null;
 
 async function clienteWA() {
@@ -37,6 +40,26 @@ async function latido() {
 async function tareas() {
   const hechas = await sql('SELECT private.worker_tareas() v');
   for (const h of hechas || []) log(`Tarea ${h.tarea} (${h.fecha}):`, JSON.stringify(h.resultado));
+}
+
+// Tareas que corren en el worker (red o motor de cálculo); la base decide cuándo y deja constancia
+const EXTERNAS = {
+  copia_legado: () => copiaLegado(sql, firestore),
+  reporte_paralelo: fecha => reporteParalelo(sql, diaAnterior(fecha)),
+};
+async function tareasExternas() {
+  for (const [tarea, fn] of Object.entries(EXTERNAS)) {
+    const fecha = await sql('SELECT private.worker_tarea_externa($1) v', [tarea]);
+    if (!fecha) continue;
+    try {
+      const r = await fn(fecha);
+      await pool.query('SELECT private.worker_tarea_fin($1, $2, $3)', [tarea, fecha, JSON.stringify(r)]);
+      log(`Tarea ${tarea} (${fecha}):`, JSON.stringify(r).slice(0, 500));
+    } catch (e) {
+      await pool.query('SELECT private.worker_tarea_fin($1, $2, NULL, $3)', [tarea, fecha, e.message]);
+      log(`Tarea ${tarea} (${fecha}) con error: ${e.message}`);
+    }
+  }
 }
 
 async function enviarWhatsApp(t) {
@@ -93,10 +116,21 @@ async function ciclo(nombre, fn) {
 
 async function main() {
   log(`Worker iniciado · modo ${config.modo.toUpperCase()} · Google Sheets ${sheets.configurado ? 'configurado' : 'sin configurar'}`);
+  // Copia y reporte a demanda (no marca la tarea del día): node src/index.js --paralelo [YYYY-MM-DD]
+  const iPar = process.argv.indexOf('--paralelo');
+  if (iPar >= 0) {
+    log('Copia del legado:', JSON.stringify(await copiaLegado(sql, firestore)));
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(process.argv[iPar + 1] || '') ? process.argv[iPar + 1] : diaAnterior(hoy);
+    log(`Reporte de diferencias ${fecha}:`, JSON.stringify(await reporteParalelo(sql, fecha)));
+    await pool.end();
+    return;
+  }
   if (process.argv.includes('--una-vez')) {
     const est = await ciclo('latido', latido);
     log('Servicio WhatsApp:', JSON.stringify(est));
     await ciclo('tareas', tareas);
+    await ciclo('tareas externas', tareasExternas);
     log(`Trabajos procesados: ${await ciclo('cola', cola)}`);
     await pool.end();
     return;
@@ -111,6 +145,7 @@ async function main() {
       ultimoMinuto = Date.now();
       await ciclo('latido', latido);
       await ciclo('tareas', tareas);
+      await ciclo('tareas externas', tareasExternas);
     }
     await ciclo('cola', cola);
     await esperar(config.intervaloColaMs);

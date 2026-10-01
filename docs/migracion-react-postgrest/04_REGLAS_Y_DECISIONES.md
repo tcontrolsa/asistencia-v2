@@ -254,3 +254,28 @@ Sin `pg_cron` en la imagen: un worker Node (`worker/`) con rol propio `tcontrol_
 **Pendiente de configuración en el servidor (no en el repositorio):** `OPENWA_API_KEY` (y `OPENWA_URL` si cambia),
 `WHATSAPP_MODO=real` cuando se apruebe enviar, y las credenciales de Google para Sheets.
 
+## 13. Fase 7 — operación en paralelo (desde 2026-10-01)
+
+El personal sigue marcando en el legado (`asistencia.tcontrolsa.com`, P-08). Cada noche el worker:
+
+| Hora | Tarea | Qué hace |
+|---|---|---|
+| 00:15 | `copia_legado` | Lee Firestore por REST (lectura pública que permiten las reglas del legado; sin llaves) las colecciones `empleados` y `registros` completas y las aplica a la base nueva: altas y cambios de ficha (el rol y las credenciales los manda la base nueva; nunca se copian `pin` ni `deviceToken`), marcaciones y novedades con `legacy_id 'fs:<id>'`, minutos de permiso en `ajustes_dia`. Correcciones y borrados del legado se reflejan; lo editado en la base nueva no se pisa; una lista incompleta no borra nada |
+| 00:30 | `autocompletar_salidas` | Ya con lo copiado del día anterior |
+| 00:45 | `reporte_paralelo` | Aplica el motor del legado (D-24) a la vista del legado (Firestore + copia del Express hasta el 29-sep + hoja archivada) y a la de la base nueva, para el día anterior y el período en curso; guarda el reporte en `core.paralelo_reportes` (Sup. Admin/Admin: `diagnostico.html` → Operación en paralelo) |
+
+**Firestore se reinició el 30-sep-2026**: solo tiene registros desde esa fecha; lo anterior está en la base nueva por el ETL.
+
+Causas con que se clasifica cada diferencia del día:
+
+| Causa | Significado |
+|---|---|
+| `AUTOCOMPLETAR` | La base nueva muestra la salida autocompletada; el legado la escribe solo en la hoja y su panel la oculta si ese día hay registros en Firestore (defecto del legado). Explicada |
+| `HOJA` | Marcaciones que solo están en la hoja `REGISTROS` (importadas por el ETL); el legado las ocultaba por la misma regla. Explicada |
+| `COPIA` | Los registros del día no coinciden (p. ej. la hora cruda anómala de 1058 el 29-sep: 11:05 en el documento, 07:05 en la base). Revisar |
+| `CALCULO` | Mismos registros y distinto resultado: revisar la regla |
+
+Primer resultado (base de desarrollo, 26 al 30-sep): 30-sep **111/111 idénticos**; 26-sep 4 `AUTOCOMPLETAR`; 28-sep 2 `HOJA`; 29-sep 1 `COPIA` (1058). La primera corrida destapó que faltaban los minutos de permiso de Firestore; ya se copian.
+
+**Diferencia de roles detectada en la copia:** el legado marca a 7 y 8 como "SUPERVISOR ADMIN" y a 1058 como "SI"; la base nueva tiene 1058 = ADMIN y 7, 8 = SUPERVISOR (respuesta a P-09). Confirmar cuál es la correcta (**P-17**).
+
