@@ -12,6 +12,7 @@ import { Paneles } from './ui/Paneles';
 import { ModalesSupervisor } from './ui/ModalesSupervisor';
 import { badgeInvitados, notificarManualSupAdminsWhatsApp, pendientesInvitados, subtipoLabel } from './ui/Servicios';
 import { ModalesDesglose } from './ui/Desgloses';
+import { ModalesWhatsApp } from './ui/WhatsApp';
 
 export function SupervisorApp() {
   const [conSesion, setConSesion] = useState(() => {
@@ -39,6 +40,7 @@ export function SupervisorApp() {
       {!conSesion && <Login onIngresar={() => setConSesion(true)} />}
       <ModalesSupervisor />
       <ModalesDesglose />
+      <ModalesWhatsApp />
       <AvisoPrivacidad />
     </>
   );

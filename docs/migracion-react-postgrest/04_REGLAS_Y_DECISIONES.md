@@ -196,7 +196,13 @@ prueba y una hora cruda anómala (1058, 29/09).
 | Exportar a Google Sheets | Hoja nueva `Rep_…` vía Apps Script | Pendiente del worker de integraciones (Fase 6); el botón lo indica y Excel queda disponible |
 | PDF de KPIs | html2pdf desde CDN | html2pdf.js 0.14 (sin la vulnerabilidad de jspdf ≤ 4.2.0) cargado bajo demanda; fuera del precache del PWA |
 | Modales "Justificar" y "Desglose de inasistencias" | Código presente pero inalcanzable (sus contenedores no existen en `supervisor.html`) | No se migran |
-| WhatsApp desde el panel | Envío por OpenWA con la llave en el navegador | Temporalmente `wa.me` hasta el bloque de WhatsApp (la llave queda en el servidor) |
+| WhatsApp desde el panel | OpenWA llamado desde el navegador con la API key escrita en `openwa_service.js` | Configuración y plantillas en la base **sin** la llave (va en variable de entorno del worker, D-12); prueba, envíos masivos e individuales se encolan (`WHATSAPP_MENSAJE`, log `EN_COLA`) y los envía el worker de la Fase 6; "Abrir chat (wa.me)" funciona igual |
+| Estado "Conectado" de OpenWA | Petición directa del navegador al servidor OpenWA | Último latido que publica el worker (`core.configuracion.whatsapp_worker`); sin worker figura "Desconectado" |
+| Recordatorio automático "no registró entrada" | Solo corría si un supervisor tenía el panel abierto (defecto §5.7) | Se guarda la configuración (hora de corte, días, enlace); lo ejecuta el servidor en la Fase 6 |
+| Días de envío automático | Los checkboxes no se guardaban | Se guardan en `core.configuracion.whatsapp.dias_envio` |
+| Imágenes y plantillas personalizadas | `localStorage` del navegador de cada supervisor | `core.whatsapp_plantillas` (compartidas; imagen reducida a 1200 px) |
+| Tabla de auditoría | Las celdas no coincidían con los encabezados (Origen bajo "Mensaje") | Filas alineadas con sus encabezados |
+| Registrar celular desde el mensaje individual | `actualizarEmpleado` (cualquier supervisor) | `api.sup_guardar_telefono` (cualquier supervisor, número normalizado) |
 | Avisos a Sup. Admin de invitados (recordatorio y cancelación) | OpenWA desde el navegador | `core.cola_notificaciones` (`RECORDATORIO_INVITADOS`, `CANCELACION_INVITADO`); los envía el worker de la Fase 6 |
 | Menú semanal | Firestore + archivo del anterior en la hoja `HISTORIAL_MENU` desde el navegador | `api.sup_guardar_menu` archiva y publica en una sola transacción; sugerencias desde `core.historial_menu` |
 | Cultura Tcontrol | Banco en Firestore/Sheets; interruptor general guardado también en `localStorage` | `api.sup_guardar_cultura` (reemplaza el banco, valida ≥ 2 opciones) y `api.sup_cultura_global` (`core.configuracion.cultura`) |

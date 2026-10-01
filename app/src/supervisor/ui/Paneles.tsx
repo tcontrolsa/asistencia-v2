@@ -10,6 +10,7 @@ import { Directorio } from './Directorio';
 import { Mapa } from './Mapa';
 import { Reportes } from './Reportes';
 import { PanelServicios } from './Servicios';
+import { PanelWhatsApp } from './WhatsApp';
 
 function PanelBase({ id, activo, children }: { id: string; activo: boolean; children: ReactNode }) {
   return <div id={`panel-${id}`} className={`panel${activo ? ' active' : ''}`}>{activo ? children : null}</div>;
@@ -24,7 +25,7 @@ export function Paneles() {
       <PanelBase id="asistencia" activo={panel === 'asistencia'}><PanelAsistencia /></PanelBase>
       <PanelBase id="opciones" activo={panel === 'opciones'}><Pendiente texto="Opciones adicionales" /></PanelBase>
       <PanelBase id="servicios" activo={panel === 'servicios'}><PanelServicios /></PanelBase>
-      <PanelBase id="whatsapp" activo={panel === 'whatsapp'}><Pendiente texto="Notificaciones WhatsApp" /></PanelBase>
+      <PanelBase id="whatsapp" activo={panel === 'whatsapp'}><PanelWhatsApp /></PanelBase>
       <PanelBase id="detalle" activo={panel === 'detalle'}><PanelDetalle /></PanelBase>
     </>
   );

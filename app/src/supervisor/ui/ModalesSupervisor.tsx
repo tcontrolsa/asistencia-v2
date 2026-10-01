@@ -18,7 +18,6 @@ export function ModalesSupervisor() {
   const futuro = useModal<{ id?: string; fecha?: string }>('futuro');
   const campo = useModal<{ id?: string }>('campo');
   const extra = useModal('extraLunch');
-  const wa = useModal<{ id: string; mensaje?: string }>('waIndividual');
   const editarEmp = useModal<{ id: string }>('editarEmp');
   const nuevoEmp = useModal('nuevoEmp');
   return (
@@ -30,7 +29,6 @@ export function ModalesSupervisor() {
       {editarEmp && <ModalEditarEmpleado id={editarEmp.id} />}
       {nuevoEmp && <ModalNuevoEmpleado />}
       {jornada && <ModalJornada id={jornada.id} fecha={jornada.fecha} />}
-      {wa && <ModalWhatsAppBasico datos={wa} />}
     </>
   );
 }
@@ -510,34 +508,6 @@ function ModalExtraLunch() {
         <div className="modal-footer">
           <button className="btn-secondary-modal" onClick={cerrar}>Cancelar</button>
           <button className="btn-primary-modal" onClick={() => void guardar()}>Registrar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Mensaje directo por WhatsApp: hasta migrar el módulo de notificaciones (bloque E) se abre wa.me
-function ModalWhatsAppBasico({ datos }: { datos: { id: string; mensaje?: string } }) {
-  const emp = sup.get().empCache.find(e => e.id === datos.id);
-  const tel = String(emp?.telefono || '').replace(/\D/g, '');
-  const [msg, setMsg] = useState(datos.mensaje || '');
-  const cerrar = () => cerrarModal('waIndividual');
-  return (
-    <div id="modalWhatsAppIndividual" className="modal-overlay" style={s('z-index: 10000;')} onClick={fondoCierra('waIndividual')}>
-      <div className="modal-container" style={s('max-width: 480px;')}>
-        <div className="modal-header" style={s('background:#16a34a; color:white;')}>
-          <h3 className="modal-title" style={s('color:white;')}><i className="fab fa-whatsapp"></i> Mensaje a {emp?.nombre || datos.id}</h3>
-          <button className="modal-close" onClick={cerrar} style={s('color:white;')}>&times;</button>
-        </div>
-        <div className="modal-body">
-          <textarea id="txtMensajeWaIndividual" className="form-input" rows={7} value={msg} onChange={ev => setMsg(ev.target.value)}></textarea>
-          {!tel && <p style={s('color:#dc2626; font-size:12px;')}>El colaborador no tiene teléfono registrado para WhatsApp</p>}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary-modal" onClick={cerrar}>Cancelar</button>
-          <button className="btn-primary-modal" disabled={!tel} onClick={() => { window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank'); cerrar(); }}>
-            <i className="fab fa-whatsapp"></i> Abrir WhatsApp
-          </button>
         </div>
       </div>
     </div>
