@@ -256,7 +256,8 @@ function Panel() {
           {nav('servicios', 'fas fa-layer-group', 'var(--amber)', 'Gestión & Servicios', <BadgeInvitados />)}
           {esAdmin && nav('whatsapp', 'fab fa-whatsapp', '#22c55e', 'Notificaciones WhatsApp')}
           {rol === 'ADMIN_MASTER' && nav('opciones', 'fas fa-sliders-h', '#64748b', 'Opciones adicionales')}
-          <a className="nav-item" href="visor_empleado.html" target="_blank" style={s('text-decoration: none;')}><i className="fas fa-mobile-alt" style={s('color:#8b5cf6;')}></i><span>Simulador de Vista</span></a>
+          {/* visor_empleado.html falsificaba la sesión del colaborador en el navegador; pendiente de decisión (P-16) */}
+          <a className="nav-item" href="#" onClick={e => { e.preventDefault(); mostrarToast('El Simulador de Vista requiere una sesión de solo lectura emitida por el servidor; pendiente de aprobación (P-16).', 'info'); }} style={s('text-decoration: none;')}><i className="fas fa-mobile-alt" style={s('color:#8b5cf6;')}></i><span>Simulador de Vista</span></a>
         </nav>
         <div className="sidebar-footer">
           <button className="btn-extra-lunch" onClick={() => abrirModal('manual', {})}

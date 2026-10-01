@@ -214,3 +214,13 @@ prueba y una hora cruda anómala (1058, 29/09).
 | Menú semanal | Firestore + archivo del anterior en la hoja `HISTORIAL_MENU` desde el navegador | `api.sup_guardar_menu` archiva y publica en una sola transacción; sugerencias desde `core.historial_menu` |
 | Cultura Tcontrol | Banco en Firestore/Sheets; interruptor general guardado también en `localStorage` | `api.sup_guardar_cultura` (reemplaza el banco, valida ≥ 2 opciones) y `api.sup_cultura_global` (`core.configuracion.cultura`) |
 | Pedidos de invitados cancelados | `obtenerListaConsolidadaInvitados` los omite (el filtro "Cancelado" no muestra filas) | Se conserva el comportamiento |
+| Radar `ubicacion.html` | Firestore desde el navegador; geocerca escrita en el código | `api.sup_radar` (marcaciones de hoy con la geocerca de `core.configuracion.sistema`, D-21); Leaflet y fuentes empaquetados, sin CDN; recarga cada 60 s |
+| `admin_config.html` | Sup. Admin / Admin Master; el aviso verde decía "guardada exitosamente" también ante errores | `api.sup_config_sistema` / `api.sup_guardar_config_sistema` (las horas de inicio, límite y salida también actualizan `core.horarios`); el aviso muestra el mensaje real (rojo en errores) |
+| Modo mantenimiento | Se guardaba pero ninguna pantalla lo aplicaba | Se conserva: solo se guarda |
+| "Activar/Desactivar Firebase" y "Migración a Firebase" | Botones de la transición a Firestore | No aplican; se retiran |
+| Restablecer contraseñas de todos | Borraba el PIN de todas las cuentas | `api.sup_resetear_contrasenas_todos('BORRAR')`: solo cuentas de colaborador y supervisor (no Sup. Admin ni Admin, ni la del que ejecuta); cada uno crea su contraseña con su cédula |
+| `diagnostico.html` | Pruebas JSONP contra la URL de Apps Script | Estado real del servidor (`api.sup_estado_sistema`, D-16): hora oficial, migración, datos de hoy, cola de notificaciones y latido del worker; requiere sesión de supervisor |
+| Simulador de Vista (`visor_empleado.html`) | Escribía en `localStorage` una sesión falsa del colaborador (`SIM_<id>`) y abría la app en un iframe: el simulador podía marcar en nombre de otro | **No se migra todavía (P-16)**: el enlace avisa que está pendiente |
+
+**P-16 (nueva).** ¿Se necesita el Simulador de Vista? Recomendación: sesión de **solo lectura** emitida por el
+servidor (Sup. Admin / Admin, auditada, sin permiso para marcar ni modificar), mostrada en un iframe de la app.

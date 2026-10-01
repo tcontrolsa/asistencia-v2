@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
-    // Una página por actor, como el legado (index, guardia, catering) + kiosco (D-23)
+    // Una página por actor, como el legado (index, guardia, catering) + kiosco (D-23) + páginas auxiliares del supervisor
     build: {
       rollupOptions: {
         input: {
@@ -53,6 +53,9 @@ export default defineConfig(({ mode }) => {
           catering: 'catering.html',
           kiosco: 'kiosco.html',
           supervisor: 'supervisor.html',
+          ubicacion: 'ubicacion.html',
+          admin_config: 'admin_config.html',
+          diagnostico: 'diagnostico.html',
         },
       },
     },
