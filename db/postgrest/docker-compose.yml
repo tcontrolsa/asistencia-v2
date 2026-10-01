@@ -29,7 +29,8 @@ services:
       OPENWA_API_KEY: ${OPENWA_API_KEY:-}
       OPENWA_SESION: ${OPENWA_SESION:-}
       WHATSAPP_SOLO_NUMEROS: ${WHATSAPP_SOLO_NUMEROS:-}
-      GOOGLE_CREDENCIALES: ${GOOGLE_CREDENCIALES:+/run/secrets/google.json}
+      # Google Sheets: copiar el JSON de la cuenta de servicio como db/postgrest/secretos/google.json
+      GOOGLE_CREDENCIALES: /run/secretos/google.json
       SHEETS_ID: ${SHEETS_ID:-}
     volumes:
-      - ${GOOGLE_CREDENCIALES:-/dev/null}:/run/secrets/google.json:ro
+      - ./secretos:/run/secretos:ro
