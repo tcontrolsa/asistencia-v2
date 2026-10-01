@@ -203,6 +203,13 @@ prueba y una hora cruda anómala (1058, 29/09).
 | Imágenes y plantillas personalizadas | `localStorage` del navegador de cada supervisor | `core.whatsapp_plantillas` (compartidas; imagen reducida a 1200 px) |
 | Tabla de auditoría | Las celdas no coincidían con los encabezados (Origen bajo "Mensaje") | Filas alineadas con sus encabezados |
 | Registrar celular desde el mensaje individual | `actualizarEmpleado` (cualquier supervisor) | `api.sup_guardar_telefono` (cualquier supervisor, número normalizado) |
+| Opciones: flujo Google Sheets "ACTUALIZAR" | Escribía/leía una hoja vía Apps Script | Archivo Excel `ACTUALIZAR.xlsx`: se descarga, se edita y se sube con vista previa (D-11) |
+| Opciones: PIN en formulario y pegado | Campo/columna PIN de 4 dígitos | Cédula (la contraseña la crea el colaborador, D-06); una columna PIN pegada se ignora |
+| Opciones: "Eliminar Usuarios" | Borraba el documento del empleado | Baja lógica (`eliminado_en`, sin acceso); el histórico se conserva (LOPDP) |
+| Opciones: desvincular | Movía las filas a la hoja `DESVINCULADOS` | `core.desvinculaciones` con copia de la ficha; el colaborador queda inactivo y sus registros permanecen (filtro "Desvinculados" en Reportes) |
+| Opciones: archivado histórico | Traspasaba Firestore → Sheets | No aplica: la base conserva todo el histórico; el botón lo indica |
+| Opciones: forzar actualización | Señal en Firestore leída por la app | `sistema.forzar_actualizacion`; la leen la app, las terminales y el panel (`api.version_forzada`, cada 15 min) |
+| Opciones: acceso | Admin Master (1058 fijo en el código) | Rol `ADMIN` de la base; su rol no se puede cambiar ni dar de baja |
 | Avisos a Sup. Admin de invitados (recordatorio y cancelación) | OpenWA desde el navegador | `core.cola_notificaciones` (`RECORDATORIO_INVITADOS`, `CANCELACION_INVITADO`); los envía el worker de la Fase 6 |
 | Menú semanal | Firestore + archivo del anterior en la hoja `HISTORIAL_MENU` desde el navegador | `api.sup_guardar_menu` archiva y publica en una sola transacción; sugerencias desde `core.historial_menu` |
 | Cultura Tcontrol | Banco en Firestore/Sheets; interruptor general guardado también en `localStorage` | `api.sup_guardar_cultura` (reemplaza el banco, valida ≥ 2 opciones) y `api.sup_cultura_global` (`core.configuracion.cultura`) |

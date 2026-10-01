@@ -1,6 +1,5 @@
 // Contenedor de paneles (.panel / .panel.active del legado)
 import { ReactNode } from 'react';
-import { s } from '../../lib/estilo';
 import { cambiarSubtabAsistencia } from '../nav';
 import { useSup } from '../store';
 import { ControlDiario } from './ControlDiario';
@@ -9,6 +8,7 @@ import { PanelDetalle } from './Detalle';
 import { Directorio } from './Directorio';
 import { Mapa } from './Mapa';
 import { Reportes } from './Reportes';
+import { PanelOpciones } from './Opciones';
 import { PanelServicios } from './Servicios';
 import { PanelWhatsApp } from './WhatsApp';
 
@@ -23,16 +23,12 @@ export function Paneles() {
       <PanelBase id="dashboard" activo={panel === 'dashboard'}><Dashboard /></PanelBase>
       <PanelBase id="reportes" activo={panel === 'reportes'}><Reportes /></PanelBase>
       <PanelBase id="asistencia" activo={panel === 'asistencia'}><PanelAsistencia /></PanelBase>
-      <PanelBase id="opciones" activo={panel === 'opciones'}><Pendiente texto="Opciones adicionales" /></PanelBase>
+      <PanelBase id="opciones" activo={panel === 'opciones'}><PanelOpciones /></PanelBase>
       <PanelBase id="servicios" activo={panel === 'servicios'}><PanelServicios /></PanelBase>
       <PanelBase id="whatsapp" activo={panel === 'whatsapp'}><PanelWhatsApp /></PanelBase>
       <PanelBase id="detalle" activo={panel === 'detalle'}><PanelDetalle /></PanelBase>
     </>
   );
-}
-
-function Pendiente({ texto }: { texto: string }) {
-  return <div className="empty-state" style={s('padding:40px; text-align:center; color:#64748b;')}><i className="fas fa-person-digging" style={s('font-size:28px;')}></i><p>{texto}: en migración (Fase 5).</p></div>;
 }
 
 function PanelAsistencia() {

@@ -109,6 +109,9 @@ Lectura con la forma de registro del legado (D-24, `private.registros_legado`):
 - WhatsApp (015): `api.sup_whatsapp_plantillas` (config sin llave, plantillas, estado del worker), `api.sup_guardar_whatsapp_config`,
   `api.sup_guardar_plantilla_wa`, `api.sup_eliminar_plantilla_wa`, `api.sup_whatsapp_logs`, `api.sup_encolar_whatsapp`,
   `api.sup_log_wame`, `api.sup_guardar_telefono`. El worker (Fase 6) consume `WHATSAPP_MENSAJE` de la cola y actualiza el log.
+- Opciones (016, solo Admin): `api.sup_opciones_datos`, `api.sup_asignar_rol`, `api.sup_carga_masiva_empleados`,
+  `api.sup_eliminar_colaboradores` (baja lógica), `api.sup_desvincular_colaborador`, `api.sup_forzar_actualizacion`;
+  `api.version_forzada` (sin sesión) para las terminales.
 - Los cálculos (jornada neta, bolsa de 4 h, por regularizar, KPIs, reportes) se hacen en el navegador con el motor
   portado del legado; `node app/scripts/paridad-supervisor.mjs` compara sus números contra los datos del legado.
 

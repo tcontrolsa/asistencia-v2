@@ -1,4 +1,5 @@
 import { registerSW } from 'virtual:pwa-register';
+import { rpc } from './lib/api';
 
 // Registro del service worker con actualización automática (initPWA del legado)
 export function iniciarPwa() {
@@ -7,8 +8,9 @@ export function iniciarPwa() {
     immediate: true,
     onRegisteredSW(_url, reg) {
       if (!reg) return;
-      window.setInterval(() => reg.update().catch(() => undefined), 15 * 60 * 1000);
+      window.setInterval(() => { reg.update().catch(() => undefined); void consultarVersionForzada(); }, 15 * 60 * 1000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => undefined); });
+      void consultarVersionForzada();
     },
     onNeedRefresh() { actualizar(true); },
   });
@@ -29,6 +31,16 @@ export async function forzarActualizacion(ts: number) {
       window.location.replace(url.toString());
     }, 500);
   }
+}
+
+// Orden emitida desde Opciones → Operaciones (todas las páginas: app, guardia, catering, kiosco y panel)
+async function consultarVersionForzada() {
+  try {
+    const remoto = Number(await rpc<number>('version_forzada', {}, false));
+    // Primera visita del dispositivo: solo toma la marca actual (no hay versión vieja que purgar)
+    if (!localStorage.getItem('tcontrol_ultima_act_forzada')) { localStorage.setItem('tcontrol_ultima_act_forzada', String(remoto)); return; }
+    verificarActualizacionForzada(remoto);
+  } catch { /* sin conexión o sin almacenamiento */ }
 }
 
 export function verificarActualizacionForzada(tsRemoto: number | string | null | undefined) {
