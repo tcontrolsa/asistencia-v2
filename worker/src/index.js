@@ -16,6 +16,8 @@ if (!config.dbUri) {
   process.exit(1);
 }
 
+// Las columnas `date` llegan como texto 'YYYY-MM-DD' (sin convertir a la zona del contenedor)
+pg.types.setTypeParser(1082, v => v);
 const pool = new pg.Pool({ connectionString: config.dbUri, max: 2, application_name: 'tcontrol-worker' });
 const sql = async (texto, params = []) => (await pool.query(texto, params)).rows[0]?.v;
 const sheets = crearSheets(config.sheets);
