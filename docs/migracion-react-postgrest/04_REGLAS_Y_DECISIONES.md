@@ -220,10 +220,13 @@ prueba y una hora cruda anómala (1058, 29/09).
 | "Activar/Desactivar Firebase" y "Migración a Firebase" | Botones de la transición a Firestore | No aplican; se retiran |
 | Restablecer contraseñas de todos | Borraba el PIN de todas las cuentas | `api.sup_resetear_contrasenas_todos('BORRAR')`: solo cuentas de colaborador y supervisor (no Sup. Admin ni Admin, ni la del que ejecuta); cada uno crea su contraseña con su cédula |
 | `diagnostico.html` | Pruebas JSONP contra la URL de Apps Script | Estado real del servidor (`api.sup_estado_sistema`, D-16): hora oficial, migración, datos de hoy, cola de notificaciones y latido del worker; requiere sesión de supervisor |
-| Simulador de Vista (`visor_empleado.html`) | Escribía en `localStorage` una sesión falsa del colaborador (`SIM_<id>`) y abría la app en un iframe: el simulador podía marcar en nombre de otro | **No se migra todavía (P-16)**: el enlace avisa que está pendiente |
+| Simulador de Vista (`visor_empleado.html`) | Escribía en `localStorage` una sesión falsa del colaborador (`SIM_<id>`) y abría la app en un iframe: el simulador podía marcar en nombre de otro | **Respuesta P-16 (2026-10-01):** sesión de solo lectura emitida por el servidor (`api.sup_simular_empleado`, migración 019): Sup. Admin y Admin, 30 min, auditada; la transacción queda en solo lectura (no se puede marcar ni modificar). El token viaja en el fragmento de la URL del iframe y no se guarda en el navegador. La ficha muestra "Contraseña: Creada/Pendiente" en lugar del PIN |
 
-**P-16 (nueva).** ¿Se necesita el Simulador de Vista? Recomendación: sesión de **solo lectura** emitida por el
-servidor (Sup. Admin / Admin, auditada, sin permiso para marcar ni modificar), mostrada en un iframe de la app.
+**P-16 (respondida 2026-10-01).** Sí: sesión de solo lectura emitida por el servidor (ver fila anterior). Un Sup. Admin
+no puede simular a otro Sup. Admin ni al Admin.
+
+**P-08 (respondida 2026-10-01).** En producción está el legado Firebase (`asistencia.tcontrolsa.com`). Fase 7: el
+personal sigue marcando ahí; cada noche se copian sus marcaciones a la base nueva y se comparan los reportes.
 
 ## 12. Fase 6 — automatizaciones e integraciones (2026-10-01)
 

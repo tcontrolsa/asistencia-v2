@@ -31,6 +31,8 @@ export default async function (c, t) {
   r = await como(c, 'supervisor_admin', adm, `SELECT api.sup_guardar_whatsapp_config('{"apiKey":"x"}'::jsonb) v`);
   t.ok(r.codigo === '22023', 'la API key no se acepta desde el panel');
 
+  // El worker real puede estar latiendo contra esta base: se quita su latido solo dentro de la prueba
+  await c.query(`DELETE FROM core.configuracion WHERE clave = 'whatsapp_worker'`);
   r = await como(c, 'supervisor_admin', adm, `SELECT api.sup_guardar_plantilla_wa('custom_1', 'Comunicado', 'Hola {nombre}', 'data:image/jpeg;base64,AAAA') v`);
   let p = await como(c, 'supervisor', sup, `SELECT api.sup_whatsapp_plantillas() v`);
   t.ok(r.v?.ok && p.v?.plantillas?.custom_1?.personalizada === true && p.v?.plantillas?.custom_1?.imagen?.startsWith('data:image/jpeg'),

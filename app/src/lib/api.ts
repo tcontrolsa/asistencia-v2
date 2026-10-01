@@ -4,6 +4,11 @@ const BASE = ((import.meta.env.VITE_POSTGREST_URL as string | undefined) || './r
 let CLAVE_TOKEN = 'TCONTROL_SESION';
 export function usarClaveSesion(clave: string) { CLAVE_TOKEN = clave; }
 
+// Vista simulada (visor_empleado.html, P-16): el token de solo lectura vive solo en memoria de la pestaña
+let TOKEN_SIMULADO: string | null = null;
+export function usarSesionSimulada(token: string) { TOKEN_SIMULADO = token; }
+export const esSesionSimulada = () => TOKEN_SIMULADO !== null;
+
 export class ErrorApi extends Error {
   constructor(message: string, public codigo?: string, public hint?: string, public estado?: number, public datos?: unknown) {
     super(message);
@@ -35,12 +40,15 @@ export function fixFotoUrl(url: string, size = 200): string {
 
 export const sesion = {
   token(): string | null {
+    if (TOKEN_SIMULADO !== null) return TOKEN_SIMULADO || null;
     try { return localStorage.getItem(CLAVE_TOKEN); } catch { return null; }
   },
   guardar(token: string) {
+    if (TOKEN_SIMULADO !== null) { TOKEN_SIMULADO = token; return; }
     try { localStorage.setItem(CLAVE_TOKEN, token); } catch { /* sin almacenamiento */ }
   },
   cerrar() {
+    if (TOKEN_SIMULADO !== null) { TOKEN_SIMULADO = ''; return; }
     try { localStorage.removeItem(CLAVE_TOKEN); } catch { /* sin almacenamiento */ }
   },
 };
@@ -67,6 +75,9 @@ async function pedir<T>(metodo: string, ruta: string, cuerpo?: unknown, conSesio
     if ((r.status === 401 || d.code === 'PT401') && token && d.codigo === undefined) {
       sesion.cerrar();
       alExpirar?.();
+    }
+    if (TOKEN_SIMULADO !== null && d.code === '25006') {
+      throw new ErrorApi('Vista simulada de solo lectura: no se puede marcar ni modificar datos.', 'SIMULACION', undefined, r.status, datos);
     }
     throw new ErrorApi(d.error || d.message || `Error del servidor (${r.status})`, d.codigo || d.code, d.hint, r.status, datos);
   }

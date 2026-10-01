@@ -134,3 +134,6 @@ Cola (`core.cola_notificaciones`): los eventos (`SOLICITUD_INVITADO`, `REPORTE_F
 Exportación a Google Sheets: `api.sup_exportar_sheets` + `api.sup_estado_exportacion` (supervisor).
 Horas en `core.configuracion.tareas`; enlaces del mensaje de bienvenida en `core.configuracion.enlaces`.
 Ver `worker/README.md`.
+
+Simulador de Vista (019): `api.sup_simular_lista`, `api.sup_simular_empleado` (Sup. Admin/Admin) emiten un JWT con
+`simulado`; `private.verificar_sesion` lo valida contra quien simula y pone la transacción en solo lectura.

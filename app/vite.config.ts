@@ -56,6 +56,7 @@ export default defineConfig(({ mode }) => {
           ubicacion: 'ubicacion.html',
           admin_config: 'admin_config.html',
           diagnostico: 'diagnostico.html',
+          visor_empleado: 'visor_empleado.html',
         },
       },
     },
