@@ -25,7 +25,7 @@ del día que ya pasaron su hora. Los mensajes que no se pudieron enviar en 12 h 
 `WORKER_DB_URI` (la generan `node db/scripts/generar-secretos.js` y `migrate.js`), `WHATSAPP_MODO`, `OPENWA_URL`
 (si falta, la del panel), `OPENWA_API_KEY`, `OPENWA_SESION` (si falta, la sesión lista de `/api/sessions`),
 `WHATSAPP_SOLO_NUMEROS`, `WHATSAPP_PAUSA_MS`, `GOOGLE_CREDENCIALES` (ruta al JSON de una cuenta de servicio) y
-`SHEETS_ID` (archivo de Google Sheets compartido con esa cuenta como editor).
+`GOOGLE_CREDENCIALES_B64` (el mismo JSON en base64, para Docker) y `SHEETS_ID` (archivo de Google Sheets compartido con esa cuenta como editor).
 
 ## Uso
 

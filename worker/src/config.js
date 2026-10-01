@@ -22,7 +22,8 @@ export const config = {
   soloNumeros: env('WHATSAPP_SOLO_NUMEROS').split(',').map(x => x.replace(/\D/g, '')).filter(Boolean),
   pausaMs: Number(env('WHATSAPP_PAUSA_MS', '1200')),   // enviarNotificacionesMasivas: 1.2 s entre envíos
   sheets: {
-    credenciales: env('GOOGLE_CREDENCIALES'),          // ruta al JSON de la cuenta de servicio
+    credenciales: env('GOOGLE_CREDENCIALES'),          // ruta al JSON de la cuenta de servicio, o bien:
+    credencialesB64: env('GOOGLE_CREDENCIALES_B64'),   // el mismo JSON en base64 (Docker sin volúmenes)
     hojaId: env('SHEETS_ID'),                           // ID del archivo de Google Sheets compartido con la cuenta
   },
   // Fase 7: proyecto Firebase del legado (lectura pública de registros y empleados)

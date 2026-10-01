@@ -277,5 +277,5 @@ Causas con que se clasifica cada diferencia del día:
 
 Primer resultado (base de desarrollo, 26 al 30-sep): 30-sep **111/111 idénticos**; 26-sep 4 `AUTOCOMPLETAR`; 28-sep 2 `HOJA`; 29-sep 1 `COPIA` (1058). La primera corrida destapó que faltaban los minutos de permiso de Firestore; ya se copian.
 
-**Diferencia de roles detectada en la copia:** el legado marca a 7 y 8 como "SUPERVISOR ADMIN" y a 1058 como "SI"; la base nueva tiene 1058 = ADMIN y 7, 8 = SUPERVISOR (respuesta a P-09). Confirmar cuál es la correcta (**P-17**).
+**Diferencia de roles detectada en la copia:** el legado marca a 7 y 8 como "SUPERVISOR ADMIN" y a 1058 como "SI"; la base nueva tiene 1058 = ADMIN y 7, 8 = SUPERVISOR (respuesta a P-09). **P-17 (respondida 2026-10-01):** se mantiene la base nueva (1058 = ADMIN; 7 y 8 = SUPERVISOR). La copia no cambia roles; solo los informa.
 

@@ -29,8 +29,7 @@ services:
       OPENWA_API_KEY: ${OPENWA_API_KEY:-}
       OPENWA_SESION: ${OPENWA_SESION:-}
       WHATSAPP_SOLO_NUMEROS: ${WHATSAPP_SOLO_NUMEROS:-}
-      # Google Sheets: copiar el JSON de la cuenta de servicio como db/postgrest/secretos/google.json
-      GOOGLE_CREDENCIALES: /run/secretos/google.json
+      # Google Sheets: JSON de la cuenta de servicio en base64 (sin montar carpetas: funciona también desde una
+      # carpeta de red de Windows, donde Docker no puede montar volúmenes)
+      GOOGLE_CREDENCIALES_B64: ${GOOGLE_CREDENCIALES_B64:-}
       SHEETS_ID: ${SHEETS_ID:-}
-    volumes:
-      - ./secretos:/run/secretos:ro

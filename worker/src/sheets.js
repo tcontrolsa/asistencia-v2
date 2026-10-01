@@ -27,12 +27,13 @@ async function obtenerToken(cred) {
   return token.valor;
 }
 
-export function crearSheets({ credenciales, hojaId }) {
-  const configurado = !!(credenciales && hojaId && fs.existsSync(credenciales));
+export function crearSheets({ credenciales, credencialesB64, hojaId }) {
+  const leer = () => (credencialesB64 ? Buffer.from(credencialesB64, 'base64').toString('utf8') : fs.readFileSync(credenciales, 'utf8'));
+  const configurado = !!(hojaId && (credencialesB64 || (credenciales && fs.existsSync(credenciales))));
   let cred = null;
 
   async function api(ruta, metodo = 'GET', cuerpo) {
-    cred ||= JSON.parse(fs.readFileSync(credenciales, 'utf8'));
+    cred ||= JSON.parse(leer());
     const r = await fetch(`${API}/${hojaId}${ruta}`, {
       method: metodo,
       headers: { Authorization: `Bearer ${await obtenerToken(cred)}`, 'Content-Type': 'application/json' },
@@ -44,7 +45,7 @@ export function crearSheets({ credenciales, hojaId }) {
   }
 
   async function exportar({ nombre, encabezados, filas }) {
-    if (!configurado) throw new Error('La exportación a Google Sheets no está configurada en el servidor (GOOGLE_CREDENCIALES y SHEETS_ID).');
+    if (!configurado) throw new Error('La exportación a Google Sheets no está configurada en el servidor (GOOGLE_CREDENCIALES_B64 o GOOGLE_CREDENCIALES, y SHEETS_ID).');
     const libro = await api('?fields=sheets.properties');
     const existente = libro.sheets?.find(s => s.properties.title === nombre);
     const pedidos = [];
