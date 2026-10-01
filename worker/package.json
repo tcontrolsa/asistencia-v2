@@ -1,0 +1,16 @@
+{
+  "name": "tcontrol-worker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Worker de la Fase 6: tareas programadas, envío de WhatsApp (OpenWA) y exportación a Google Sheets",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node src/index.js",
+    "una-vez": "node src/index.js --una-vez"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.4",
+    "pg": "^8.23.0"
+  }
+}

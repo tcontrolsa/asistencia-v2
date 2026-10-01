@@ -53,6 +53,15 @@ if (process.env.PGRST_AUTHENTICATOR_PASSWORD) {
   await c.query(`ALTER ROLE authenticator PASSWORD ${rows[0].p}`);
   log('Contraseña de authenticator actualizada.');
 }
+// Rol del worker de la Fase 6 (solo ejecuta private.worker_*); existe desde la migración 018.
+if (process.env.WORKER_DB_PASSWORD) {
+  const { rows } = await c.query(`SELECT quote_literal($1) AS p, EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tcontrol_worker') AS hay`,
+    [process.env.WORKER_DB_PASSWORD]);
+  if (rows[0].hay) {
+    await c.query(`ALTER ROLE tcontrol_worker PASSWORD ${rows[0].p}`);
+    log('Contraseña de tcontrol_worker actualizada.');
+  }
+}
 // Secreto con el que la base firma los JWT; debe ser el mismo PGRST_JWT_SECRET de PostgREST.
 if (process.env.PGRST_JWT_SECRET) {
   if (process.env.PGRST_JWT_SECRET.length < 32) throw new Error('PGRST_JWT_SECRET debe tener al menos 32 caracteres');

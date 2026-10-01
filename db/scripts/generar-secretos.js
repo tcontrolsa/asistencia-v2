@@ -1,5 +1,6 @@
 // Completa en .env (local, no versionado) los secretos de PostgREST que falten, sin mostrarlos.
-// PGRST_AUTHENTICATOR_PASSWORD, PGRST_JWT_SECRET y PGRST_DB_URI (usuario authenticator).
+// PGRST_AUTHENTICATOR_PASSWORD, PGRST_JWT_SECRET y PGRST_DB_URI (usuario authenticator);
+// WORKER_DB_PASSWORD y WORKER_DB_URI (usuario tcontrol_worker, Fase 6).
 // Uso: node db/scripts/generar-secretos.js [--db nombre]
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -26,6 +27,9 @@ if (vacio(valor('PGRST_JWT_SECRET'))) { poner('PGRST_JWT_SECRET', aleatorio(48))
 const host = valor('PGHOST') || 'localhost';
 const port = valor('PGPORT') || '5432';
 poner('PGRST_DB_URI', `postgresql://authenticator:${encodeURIComponent(valor('PGRST_AUTHENTICATOR_PASSWORD'))}@${host}:${port}/${db}`);
+// Worker (Fase 6): rol tcontrol_worker
+if (vacio(valor('WORKER_DB_PASSWORD'))) { poner('WORKER_DB_PASSWORD', aleatorio(24)); log('WORKER_DB_PASSWORD generado'); }
+poner('WORKER_DB_URI', `postgresql://tcontrol_worker:${encodeURIComponent(valor('WORKER_DB_PASSWORD'))}@${host}:${port}/${db}`);
 if (!valor('PGRST_DB_SCHEMAS')) poner('PGRST_DB_SCHEMAS', 'api');
 if (!valor('PGRST_DB_PRE_REQUEST')) poner('PGRST_DB_PRE_REQUEST', 'private.verificar_sesion');
 log(`PGRST_DB_URI apunta a authenticator@${host}:${port}/${db}`);

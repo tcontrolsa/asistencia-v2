@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = fs.existsSync(path.join(raiz, '..', '.env')) ? fs.readFileSync(path.join(raiz, '..', '.env'), 'utf8') : '';
-const sensibles = [...env.matchAll(/^(PGPASSWORD|PGRST_JWT_SECRET|PGRST_AUTHENTICATOR_PASSWORD|DATABASE_URL|PGRST_DB_URI)=(.+)$/gm)]
+const sensibles = [...env.matchAll(/^(PGPASSWORD|PGRST_JWT_SECRET|PGRST_AUTHENTICATOR_PASSWORD|DATABASE_URL|PGRST_DB_URI|WORKER_DB_PASSWORD|WORKER_DB_URI|OPENWA_API_KEY)=(.+)$/gm)]
   .map(m => ({ clave: m[1], valor: m[2].trim() })).filter(x => x.valor.length >= 8);
 const patrones = [/owa_k1_[A-Za-z0-9]+/, /AIza[0-9A-Za-z_-]{20,}/, /TCONTROL_SECURE_2026/, /script\.google\.com\/macros/, /postgres(ql)?:\/\//];
 

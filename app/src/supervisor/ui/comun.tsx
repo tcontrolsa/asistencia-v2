@@ -5,19 +5,21 @@ import { urlFoto } from '../../lib/api';
 import { fixFotoUrl, getLocalHoyStr } from '../legado/util';
 
 // ─── Avisos (#toast-container, 5 s) ───
-interface Aviso { id: number; msg: string; tipo: string }
+interface Aviso { id: number; msg: string; tipo: string; enlace?: { url: string; texto: string } }
 let avisos: Aviso[] = [];
 const oyentes = new Set<() => void>();
 let sec = 0;
-export function mostrarToast(msg: string, tipo = '') {
+export function mostrarToast(msg: string, tipo = '', enlace?: { url: string; texto: string }) {
   const id = ++sec;
-  avisos = [...avisos, { id, msg, tipo }];
+  avisos = [...avisos, { id, msg, tipo, enlace }];
   oyentes.forEach(f => f());
   window.setTimeout(() => { avisos = avisos.filter(a => a.id !== id); oyentes.forEach(f => f()); }, 5000);
 }
 export function Avisos() {
   const lista = useSyncExternalStore(f => { oyentes.add(f); return () => { oyentes.delete(f); }; }, () => avisos);
-  return <div id="toast-container">{lista.map(a => <div key={a.id} className={'toast-msg' + (a.tipo ? ' ' + a.tipo : '')}>{a.msg}</div>)}</div>;
+  return <div id="toast-container">{lista.map(a => <div key={a.id} className={'toast-msg' + (a.tipo ? ' ' + a.tipo : '')}>{a.msg}{a.enlace && (
+    <a href={a.enlace.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'white', fontWeight: 'bold', marginLeft: 6 }}>
+      {a.enlace.texto} <i className="fas fa-external-link-alt"></i></a>)}</div>)}</div>;
 }
 
 export function fotoDe(e: any, size = 200): string | null {

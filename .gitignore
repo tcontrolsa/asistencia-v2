@@ -33,3 +33,7 @@ dist-ssr
 db/etl/reportes/
 *.tsbuildinfo
 app/scripts/.paridad-motor.mjs
+
+# Credenciales de Google del worker (cuenta de servicio)
+worker/credenciales*.json
+*service-account*.json

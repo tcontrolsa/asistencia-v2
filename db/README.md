@@ -118,6 +118,19 @@ Lectura con la forma de registro del legado (D-24, `private.registros_legado`):
 - Los cálculos (jornada neta, bolsa de 4 h, por regularizar, KPIs, reportes) se hacen en el navegador con el motor
   portado del legado; `node app/scripts/paridad-supervisor.mjs` compara sus números contra los datos del legado.
 
-## Pendiente para fases siguientes
+## Automatizaciones e integraciones (018, Fase 6)
 
-- Tareas programadas (autocompletar salidas, avisos WhatsApp): la imagen actual no tiene `pg_cron`; irán en el worker.
+Sin `pg_cron`: el worker (`worker/`, rol `tcontrol_worker`) llama cada minuto a `private.worker_tareas()`, que ejecuta
+una vez por día cada tarea cuya hora llegó y la registra en `core.tareas_ejecuciones`:
+
+- `reset_autorizaciones` (00:05): `auth_extras` de las fichas a NO (`resetearAutorizacionesDiarias`).
+- `autocompletar_salidas` (00:30): regulariza salidas automáticas de fin de semana y crea `SALIDA` `AUTO_COMPLETAR`
+  a la hora de salida del tipo de día para los últimos 7 días sin hoy (R-21, D-02).
+- `aviso_no_registro` (hora de corte y días del panel de WhatsApp, si el envío automático está activo).
+
+Cola (`core.cola_notificaciones`): los eventos (`SOLICITUD_INVITADO`, `REPORTE_FUERA_AREA`, `RECORDATORIO_INVITADOS`,
+`CANCELACION_INVITADO`, `NUEVO_EMPLEADO`) se convierten en `WHATSAPP_MENSAJE` con los textos del legado y su fila en
+`core.whatsapp_logs`; `private.worker_tomar` / `private.worker_resultado` (3 intentos, vencimiento a las 12 h).
+Exportación a Google Sheets: `api.sup_exportar_sheets` + `api.sup_estado_exportacion` (supervisor).
+Horas en `core.configuracion.tareas`; enlaces del mensaje de bienvenida en `core.configuracion.enlaces`.
+Ver `worker/README.md`.

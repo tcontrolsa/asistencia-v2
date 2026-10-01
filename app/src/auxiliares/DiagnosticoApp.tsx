@@ -5,6 +5,11 @@ import { useEffect, useState } from 'react';
 import { rpc, urlApi } from '../lib/api';
 import { leerClaims } from '../lib/sesion';
 
+const NOMBRES_TAREA: Record<string, string> = {
+  reset_autorizaciones: 'Reset de autorizaciones de horas extra', autocompletar_salidas: 'Autocompletar salidas',
+  aviso_no_registro: 'Aviso WhatsApp "no registró entrada"',
+};
+
 export function DiagnosticoApp() {
   const claims = leerClaims();
   const autorizado = !!claims && ['supervisor', 'supervisor_admin', 'admin'].includes(claims.role);
@@ -78,6 +83,14 @@ export function DiagnosticoApp() {
             <table><tbody>
               {Object.keys(cola).length ? Object.entries(cola).map(([k, n]) => fila(`Cola · ${k}`, n)) : fila('Cola', 'vacía')}
               {fila('Último latido del worker', estado.worker?.ultimoLatido)}
+              {fila('Modo de WhatsApp', estado.worker?.modo === 'real' ? 'Envío real' : estado.worker?.modo ? 'Simulación (no envía)' : '')}
+              {fila('Sesión de WhatsApp', estado.worker?.sesionActiva === 'true' || estado.worker?.sesionActiva === true ? 'Lista' : estado.worker?.error || '')}
+              {fila('Google Sheets', estado.worker?.sheets)}
+            </tbody></table>
+            <h2 style={{ marginTop: 15 }}>Tareas programadas</h2>
+            <table><tbody>
+              {(estado.tareas || []).length ? estado.tareas.map((t: any) => fila(`${NOMBRES_TAREA[t.tarea] || t.tarea} · ${t.fecha}`,
+                t.error ? `❌ ${t.error}` : `${t.inicio?.slice(11)} · ${JSON.stringify(t.resultado)}`)) : fila('Tareas', 'Aún no se ejecutan')}
             </tbody></table>
           </div>
           <div className="container">

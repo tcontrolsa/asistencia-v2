@@ -224,3 +224,30 @@ prueba y una hora cruda anómala (1058, 29/09).
 
 **P-16 (nueva).** ¿Se necesita el Simulador de Vista? Recomendación: sesión de **solo lectura** emitida por el
 servidor (Sup. Admin / Admin, auditada, sin permiso para marcar ni modificar), mostrada en un iframe de la app.
+
+## 12. Fase 6 — automatizaciones e integraciones (2026-10-01)
+
+Sin `pg_cron` en la imagen: un worker Node (`worker/`) con rol propio `tcontrol_worker` (solo ejecuta
+`private.worker_*`) dispara las tareas cada minuto; la decisión de qué corre y cuándo está en SQL
+(`private.worker_tareas`) y cada ejecución queda en `core.tareas_ejecuciones`.
+
+| Tema | Legado | Nuevo |
+|---|---|---|
+| Horario de las tareas | Activadores de Apps Script (horas no están en el repositorio, C-17) | **Supuesto:** reset de autorizaciones 00:05 y autocompletar 00:30 (`core.configuracion.tareas`, editable). Si el worker estuvo caído, al volver corre lo pendiente del día |
+| Autocompletar salidas | Hoja `REGISTROS`; 16:15 L-V y 15:15 sábado/domingo; un feriado entre semana quedaba a las 16:15 | Misma regla sobre `core.marcaciones`; hora de salida del tipo de día (D-02: feriado 15:15). `origen SISTEMA`, `dispositivo AUTO_COMPLETAR`, `justificado NO`, "No registró salida" |
+| Regularizar fin de semana | Recorría toda la hoja en cada ejecución | Igual (en la base de desarrollo corrigió 1 salida: 1069, 04-jul, 16:15 → 15:15) |
+| Reset de autorizaciones | Columna AUTH_EXTRAS de `EMPLEADOS` a NO | `core.empleados.auth_extras` a NO. La autorización del día ya vive en la ENTRADA de hoy (`api.autorizar_extras`) |
+| Aviso "no registró entrada" | Solo si un supervisor tenía el panel abierto después de la hora de corte (defecto §3.8) | Lo ejecuta el servidor a la hora de corte, en los días marcados, si el panel lo tiene activo; mismo filtro "sin marcar" y plantilla `no_registro` (con su imagen) |
+| Avisos por evento (invitados, novedad fuera de área, nuevo colaborador) | OpenWA desde el navegador; sin destinatarios caía en 2 teléfonos escritos en el código | Mismos textos, a Sup. Admin y Admin con teléfono (nuevo colaborador: también supervisores). Sin destinatarios se descarta (no hay teléfonos en el código) y queda en la auditoría |
+| Bienvenida a nuevo colaborador | "crear y registrar tu contraseña o PIN personal de 4 dígitos" | "crear tu contraseña personal (ten a mano tu número de cédula)" (D-06) |
+| Auditoría de avisos automáticos | Solo la bienvenida se registraba | Todos los mensajes quedan en `core.whatsapp_logs` (origen `AUTOMATICO`) |
+| Reintentos | Sin reintento | 3 intentos (2 y 4 min); "número no registrado en WhatsApp" no se reintenta. Mensajes con más de 12 h sin enviarse se descartan como vencidos |
+| Ritmo de envío | 1,2 s entre mensajes del envío masivo | 1,2 s entre todos los mensajes (`WHATSAPP_PAUSA_MS`) |
+| Modo de prueba | — | `WHATSAPP_MODO=simulacion` (por defecto): no llama a OpenWA, la auditoría muestra `SIMULADO`; `WHATSAPP_SOLO_NUMEROS` limita destinatarios |
+| Exportar a Google Sheets | Apps Script `crearReporteGoogleSheets` en el archivo de la hoja | Cuenta de servicio de Google (`GOOGLE_CREDENCIALES`, `SHEETS_ID`): misma pestaña `Rep_…`/`AlmExt_…`, encabezado azul, hojas del sistema protegidas. **Pendiente:** crear la cuenta de servicio y compartir el archivo con ella |
+| Archivar Firestore > 60 días | `archivador_diario.gs` | No aplica (D-11): la base conserva el histórico |
+| `mantenimiento_registros.gs` | Ejecución manual: completar DIA/NOMBRE, borrar duplicados, horas extra >45 min, cruces con vacaciones | No aplica: día y nombre se derivan; no hay duplicados que borrar (y conservar la primera fila era un defecto, §3.6); R-12 se aplica al marcar (`003_reglas.sql`); los cruces con vacaciones los resuelve la regla del ETL |
+
+**Pendiente de configuración en el servidor (no en el repositorio):** `OPENWA_API_KEY` (y `OPENWA_URL` si cambia),
+`WHATSAPP_MODO=real` cuando se apruebe enviar, y las credenciales de Google para Sheets.
+

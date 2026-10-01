@@ -471,7 +471,7 @@ function LogsWhatsApp() {
               : !logs ? <tr><td colSpan={8} style={s('padding: 24px; text-align: center; color: var(--g500);')}><i className="fas fa-spinner fa-spin"></i> Cargando auditoría de envíos...</td></tr>
               : !lista.length ? <tr><td colSpan={8} style={s('padding: 24px; text-align: center; color: var(--g500);')}>No se registran envíos de WhatsApp.</td></tr>
               : lista.map((l, i) => {
-                const ok = l.estado === 'ENVIADO', cola = l.estado === 'EN_COLA';
+                const ok = l.estado === 'ENVIADO', cola = l.estado === 'EN_COLA', sim = l.estado === 'SIMULADO';
                 return (
                   <tr key={i} style={s('border-bottom: 1px solid #f1f5f9;')}>
                     <td style={s(td + ' text-align:center; color:#94a3b8;')}>{i + 1}</td>
@@ -480,8 +480,8 @@ function LogsWhatsApp() {
                     <td style={s('padding: 8px 12px; font-family:monospace; font-size:11.5px;')}>{l.telefono || '--'}</td>
                     <td style={s(td + ' text-align:center;')}><span className="badge" style={s('background:#e0f2fe; color:#0369a1; font-size:10px;')}>{l.tipoNotificacion || 'General'}</span></td>
                     <td style={s('padding: 8px 12px; text-align:center;')}>
-                      <span className="badge" style={s(`background:${ok ? '#dcfce7' : cola ? '#fef3c7' : '#fee2e2'}; color:${ok ? '#15803d' : cola ? '#92400e' : '#b91c1c'}; font-weight:700; font-size:10.5px;`)}>
-                        {ok ? <><i className="fas fa-check"></i> ENVIADO</> : cola ? <><i className="fas fa-clock"></i> EN COLA</> : <><i className="fas fa-times"></i> {l.estado || 'ERROR'}</>}
+                      <span className="badge" style={s(`background:${ok ? '#dcfce7' : cola ? '#fef3c7' : sim ? '#e2e8f0' : '#fee2e2'}; color:${ok ? '#15803d' : cola ? '#92400e' : sim ? '#475569' : '#b91c1c'}; font-weight:700; font-size:10.5px;`)}>
+                        {ok ? <><i className="fas fa-check"></i> ENVIADO</> : cola ? <><i className="fas fa-clock"></i> EN COLA</> : sim ? <><i className="fas fa-flask"></i> SIMULADO</> : <><i className="fas fa-times"></i> {l.estado || 'ERROR'}</>}
                       </span>
                     </td>
                     <td style={s('padding: 8px 12px; font-size:11px; color:#475569; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')} title={l.detalleRespuesta || ''}>{l.detalleRespuesta || '--'}</td>

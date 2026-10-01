@@ -16,3 +16,20 @@ services:
       PGRST_DB_MAX_ROWS: "5000"
       PGRST_OPENAPI_MODE: "follow-privileges"   # anon solo ve en /  lo que puede usar
       PGRST_LOG_LEVEL: "warn"
+
+  # Worker de la Fase 6: tareas programadas (00:05, 00:30, aviso de no registro), WhatsApp y Google Sheets.
+  # Arranca en modo simulación salvo que WHATSAPP_MODO=real.
+  worker:
+    build: ../../worker
+    restart: unless-stopped
+    environment:
+      WORKER_DB_URI: ${WORKER_DB_URI}
+      WHATSAPP_MODO: ${WHATSAPP_MODO:-simulacion}
+      OPENWA_URL: ${OPENWA_URL:-}
+      OPENWA_API_KEY: ${OPENWA_API_KEY:-}
+      OPENWA_SESION: ${OPENWA_SESION:-}
+      WHATSAPP_SOLO_NUMEROS: ${WHATSAPP_SOLO_NUMEROS:-}
+      GOOGLE_CREDENCIALES: ${GOOGLE_CREDENCIALES:+/run/secrets/google.json}
+      SHEETS_ID: ${SHEETS_ID:-}
+    volumes:
+      - ${GOOGLE_CREDENCIALES:-/dev/null}:/run/secrets/google.json:ro

@@ -2,6 +2,7 @@
 // presets de quincena, filtros rápidos, vistas de columnas, tabla con totales y exportaciones.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { rpc } from '../../lib/api';
 import { s } from '../../lib/estilo';
 import { descargarBlob } from '../excel';
 import { marcaTiempoAhora } from '../legado/dashboard';
@@ -14,8 +15,8 @@ import { mostrarDetalle } from '../nav';
 import {
   Preset, aplicarPresetFechasReporte, filtrarReportePorRangoFechas, filtrosRep, limpiarFiltroRangoFechasReportes, syncPeriodo, useFiltrosRep,
 } from '../reportesEstado';
-import { useSup } from '../store';
-import { PhotoCell, mostrarToast } from './comun';
+import { mostrarLoader, useSup } from '../store';
+import { PhotoCell, errorTexto, mostrarToast } from './comun';
 import { DatosReporte, useDatosReporte } from './usoReportes';
 
 const FILTROS_RAPIDOS: { val: string; texto: ReactNode; clase?: string; title?: string }[] = [
@@ -194,7 +195,7 @@ export function Reportes() {
             <button type="button" className="btn-export btn-export-excel" onClick={() => exportarExcelReporteCustom(datos, data, extrasVista, activas, fCargo)} title="Descargar reporte en formato Microsoft Excel (.xls)">
               <i className="fas fa-file-excel"></i> <span>Excel</span>
             </button>
-            <button type="button" className="btn-export btn-export-sheets" onClick={() => mostrarToast('La exportación a Google Sheets se habilita con el servicio de integraciones (Fase 6). Usa Excel mientras tanto.', 'info')} title="Exportar pestaña directa en tu archivo de Google Sheets">
+            <button type="button" className="btn-export btn-export-sheets" onClick={() => void exportarGoogleSheetsReporteCustom(datos, filtrarDatosReporte(stats, q, fCargo), filtrarExtras(extras, q), activas, fCargo)} title="Exportar pestaña directa en tu archivo de Google Sheets">
               <i className="fab fa-google-drive"></i> <span>Google Sheets</span>
             </button>
             <button type="button" className="btn-export btn-export-print" onClick={() => imprimirReporteCustom(datos, data, extrasVista, activas, fCargo)} title="Imprimir o guardar como PDF">
@@ -379,6 +380,53 @@ function totalColumna(data: StatReporte[], col: Columna): string | number {
   if (col.tipo === 'tiempo') return minutosAHHMMSS(total);
   if (col.tipo === 'pct') return `${data.length ? Math.round(total / data.length) : 0}%`;
   return total;
+}
+
+// ─── Exportación a Google Sheets (exportarGoogleSheetsReporteCustom → crearReporteGoogleSheets) ───
+// El worker crea la pestaña en el archivo de Sheets configurado en el servidor; el panel espera la URL.
+async function exportarGoogleSheetsReporteCustom(datos: DatosReporte, data: StatReporte[], extras: any[], activeCols: Columna[], fCargo: string) {
+  const { rango } = datos;
+  const esExtras = fCargo === 'almuerzos extra';
+  if (!(esExtras ? extras.length : datos.stats.length)) { mostrarToast('No hay datos para exportar', 'warning'); return; }
+  // Nombre de hoja seguro (máx. 30 caracteres, sin caracteres ilegales para una pestaña de Google Sheets)
+  const nombreHoja = `${esExtras ? 'AlmExt' : 'Rep'}_${(rango.labelCorto || 'Rep').replace(/[^a-zA-Z0-9]/g, '_')}`.substring(0, 30);
+  let headers: string[];
+  let filas: unknown[][];
+  if (esExtras) {
+    headers = ['Fecha', 'Descripción', 'Cantidad', 'Empresa/Destino', 'Observaciones', 'Tipo'];
+    filas = extras.map(ae => [formatearFechaA_DMY(ae.fecha), nombreExtra(ae), ae.cantidad || 1, ae.empresa || '', ae.observaciones || '', tipoExtra(ae)]);
+  } else {
+    headers = ['Empleado', 'Área', ...activeCols.map(c => c.label)];
+    filas = data.map(e => [e.nombre, e.area || '', ...activeCols.map(col => {
+      const valor = (e as any)[col.id];
+      return col.tipo === 'tiempo' ? minutosAHHMMSS(valor) : col.tipo === 'pct' ? `${valor}%` : valor;
+    })]);
+  }
+  mostrarLoader(true);
+  try {
+    const { id } = await rpc<{ id: number }>('sup_exportar_sheets', { p_nombre: nombreHoja, p_encabezados: headers, p_filas: filas });
+    for (let i = 0; i < 45; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const st = await rpc<{ estado: string; url: string | null; error: string | null; servicioActivo: boolean }>('sup_estado_exportacion', { p_id: id });
+      if (st.estado === 'ENVIADO') {
+        if (st.url) {
+          mostrarToast('¡Reporte exportado con éxito!', 'success', { url: st.url, texto: 'Abrir Google Sheets' });
+          try { window.open(st.url, '_blank'); } catch { /* bloqueador de ventanas */ }
+        } else mostrarToast('¡Reporte exportado a Google Sheets con éxito!', 'success');
+        return;
+      }
+      if (st.estado === 'ERROR' || st.estado === 'DESCARTADO') { mostrarToast(st.error || 'Error al exportar a Google Sheets', 'error'); return; }
+      if (!st.servicioActivo && i >= 4) {
+        mostrarToast('El servicio de integraciones no está activo; la exportación quedó en cola y se creará cuando vuelva. Usa Excel mientras tanto.', 'warning');
+        return;
+      }
+    }
+    mostrarToast('La exportación sigue en proceso; revisa tu archivo de Google Sheets en unos minutos.', 'info');
+  } catch (err) {
+    mostrarToast('Error de red al conectar con Google Sheets: ' + errorTexto(err), 'error');
+  } finally {
+    mostrarLoader(false);
+  }
 }
 
 // ─── Exportación a Excel (HTML con estilos, .xls) — exportarExcelReporteCustom ───
