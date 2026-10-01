@@ -233,7 +233,7 @@ Sin `pg_cron` en la imagen: un worker Node (`worker/`) con rol propio `tcontrol_
 
 | Tema | Legado | Nuevo |
 |---|---|---|
-| Horario de las tareas | Activadores de Apps Script (horas no están en el repositorio, C-17) | **Supuesto:** reset de autorizaciones 00:05 y autocompletar 00:30 (`core.configuracion.tareas`, editable). Si el worker estuvo caído, al volver corre lo pendiente del día |
+| Horario de las tareas | Activadores de Apps Script (horas no están en el repositorio, C-17) | **Confirmado (2026-10-01):** reset de autorizaciones 00:05 y autocompletar 00:30 (`core.configuracion.tareas`, editable). Si el worker estuvo caído, al volver corre lo pendiente del día |
 | Autocompletar salidas | Hoja `REGISTROS`; 16:15 L-V y 15:15 sábado/domingo; un feriado entre semana quedaba a las 16:15 | Misma regla sobre `core.marcaciones`; hora de salida del tipo de día (D-02: feriado 15:15). `origen SISTEMA`, `dispositivo AUTO_COMPLETAR`, `justificado NO`, "No registró salida" |
 | Regularizar fin de semana | Recorría toda la hoja en cada ejecución | Igual (en la base de desarrollo corrigió 1 salida: 1069, 04-jul, 16:15 → 15:15) |
 | Reset de autorizaciones | Columna AUTH_EXTRAS de `EMPLEADOS` a NO | `core.empleados.auth_extras` a NO. La autorización del día ya vive en la ENTRADA de hoy (`api.autorizar_extras`) |
